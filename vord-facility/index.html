@@ -1,0 +1,1714 @@
+<title>VORD Descent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800&family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+<style>
+:root{
+  color-scheme: dark;
+  --ground:#0E1012;
+  --panel:rgba(17,20,23,.88);
+  --panel-solid:#14171A;
+  --line:#2A3036;
+  --line-soft:rgba(232,226,214,.12);
+  --text:#E8E2D6;
+  --muted:#9AA2A8;
+  --faint:#6E767D;
+  --sky:#9CC6E8;
+  --amber:#E2A445;
+  --f-display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --f-body:"Newsreader",Georgia,"Times New Roman",serif;
+  --f-mono:"Martian Mono",ui-monospace,Menlo,Consolas,monospace;
+  --panel-w:372px;
+  --gut:16px;
+}
+html,body{height:100%;}
+[hidden]{display:none!important;}
+body{background:var(--ground);color:var(--text);overflow:hidden;font-family:var(--f-body);font-size:15px;}
+#app{position:fixed;inset:0;overflow:hidden;background:var(--ground);}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab;outline:none;}
+#gl:active{cursor:grabbing;}
+button{font:inherit;color:inherit;}
+:focus-visible{outline:2px solid var(--sky);outline-offset:2px;}
+
+/* overlays for light effects */
+#glare,#lids,#vig{position:absolute;inset:0;pointer-events:none;}
+#glare{background:radial-gradient(ellipse at 50% 45%,rgba(255,252,240,.95),rgba(255,248,230,.55) 55%,rgba(255,244,220,.25));opacity:0;transition:opacity .9s;}
+#lids{background:radial-gradient(ellipse at 50% 50%,#d4502a,#8f2412 70%,#4a0d06);opacity:0;transition:opacity 1.6s;}
+#vig{background:radial-gradient(ellipse at 50% 50%,transparent 55%,rgba(0,0,0,.45));}
+
+/* floating door signage */
+#labels{position:absolute;inset:0;pointer-events:none;}
+.lbl{position:absolute;left:0;top:0;pointer-events:auto;display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+  background:rgba(12,14,16,.78);border:0;border-left:3px solid var(--sw,#fff);padding:5px 8px 5px 7px;cursor:pointer;
+  transform-origin:0 100%;white-space:nowrap;border-radius:0 3px 3px 0;backdrop-filter:blur(3px);}
+.lbl b{font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:.02em;line-height:1;}
+.lbl small{font-family:var(--f-mono);font-size:9px;color:var(--muted);letter-spacing:.04em;line-height:1.2;}
+.lbl:hover b{color:var(--sky);}
+.lbl.zone{background:transparent;border-left:0;pointer-events:none;align-items:center;}
+.lbl.zone b{font-size:20px;color:rgba(232,226,214,.85);text-shadow:0 1px 8px rgba(0,0,0,.6);letter-spacing:.12em;}
+.lbl.zone small{color:rgba(232,226,214,.7);}
+.lbl.note{border-left-color:var(--amber);pointer-events:none;}
+.lbl.note b{font-size:13px;color:var(--amber);}
+
+/* location plate */
+#plate{position:absolute;left:var(--gut);top:calc(var(--gut) + env(safe-area-inset-top,0px));max-width:min(440px,calc(100vw - var(--panel-w) - 48px));pointer-events:none;
+  display:flex;flex-direction:column;gap:6px;}
+.eyebrow{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}
+#pName{margin:0;font-family:var(--f-display);font-weight:800;font-size:clamp(34px,5.2vw,64px);line-height:.9;letter-spacing:.005em;text-wrap:balance;text-shadow:0 1px 2px rgba(0,0,0,.7),0 2px 24px rgba(0,0,0,.65);}
+#pOff{font-family:var(--f-mono);font-size:11px;color:var(--text);letter-spacing:.02em;}
+#plate .eyebrow,#pOff,.floorline{background:rgba(10,12,14,.62);padding:3px 7px;border-radius:2px;width:max-content;max-width:100%;}
+#plate .eyebrow{color:#b9c0c5;}
+.floorline{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:10.5px;color:#b9c0c5;}
+.floorline i{display:inline-block;width:28px;height:10px;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}
+#readouts{display:grid;grid-template-columns:repeat(4,auto);gap:4px 18px;margin-top:6px;padding:8px 12px;background:rgba(10,12,14,.62);border:1px solid var(--line-soft);border-radius:3px;width:max-content;max-width:100%;}
+#readouts div{display:flex;flex-direction:column;gap:2px;}
+#readouts span{font-family:var(--f-mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);}
+#readouts b{font-family:var(--f-mono);font-weight:500;font-size:13px;font-variant-numeric:tabular-nums;}
+
+/* caption */
+#caption{position:absolute;left:50%;bottom:calc(112px + env(safe-area-inset-bottom,0px));transform:translateX(calc(-50% - var(--panel-w)/2));
+  max-width:min(620px,calc(100vw - var(--panel-w) - 64px));text-align:center;font-family:var(--f-body);font-style:italic;font-size:18px;line-height:1.35;
+  background:rgba(8,9,10,.72);padding:10px 16px;border-radius:3px;opacity:0;transition:opacity .6s;pointer-events:none;text-wrap:balance;}
+#caption.on{opacity:1;}
+#caption .sw{display:inline-block;width:18px;height:10px;border-radius:2px;margin:0 4px;vertical-align:baseline;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3);}
+
+/* cage panel */
+#cagePanel{position:absolute;right:calc(var(--panel-w) + 32px);top:calc(var(--gut) + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:6px;padding:10px;
+  background:#1d2124;border:1px solid #3a4146;border-radius:4px;width:176px;}
+#cagePanel h3{margin:0 0 2px;font-family:var(--f-mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:400;}
+#cagePanel button{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#2a3034;border:1px solid #3d454b;border-radius:3px;padding:7px 9px;cursor:pointer;
+  font-family:var(--f-mono);font-size:11px;text-align:left;}
+#cagePanel button:hover{border-color:var(--sky);}
+#cagePanel button[aria-current="true"]{background:#39424a;border-color:#6e7b86;}
+#cagePanel button.keyed{border-color:#5a4a2a;color:var(--amber);}
+#cagePanel button small{font-size:9px;color:var(--faint);}
+#cagePanel p{margin:2px 0 0;font-size:12px;line-height:1.35;color:var(--muted);font-style:italic;}
+
+/* codex panel */
+#panel{position:absolute;right:var(--gut);top:calc(var(--gut) + env(safe-area-inset-top,0px));bottom:calc(100px + env(safe-area-inset-bottom,0px));width:var(--panel-w);
+  background:var(--panel);border:1px solid var(--line);border-radius:4px;display:flex;flex-direction:column;backdrop-filter:blur(6px);}
+.tabs{display:flex;border-bottom:1px solid var(--line);flex:none;}
+.tabs button{flex:1;background:none;border:0;padding:11px 6px 10px;cursor:pointer;font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;}
+.tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--sky);}
+.tabs button:hover{color:var(--text);}
+.tabBody{flex:1;overflow-y:auto;padding:16px 18px 22px;display:flex;flex-direction:column;gap:14px;}
+.tabBody[hidden]{display:none!important;}
+.tabBody > *{flex:none;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.06em;padding:3px 7px;border-radius:2px;border:1px solid var(--line);color:var(--muted);}
+.chip.interp{border-color:rgba(226,164,75,.5);color:var(--amber);}
+.here-title{margin:0;font-family:var(--f-display);font-weight:700;font-size:28px;line-height:1;text-wrap:balance;}
+.here-off{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);margin-top:-8px;}
+.lede{margin:0;font-size:16px;line-height:1.5;}
+dl.facts{margin:0;display:grid;grid-template-columns:78px 1fr;gap:8px 12px;font-size:14px;line-height:1.4;}
+dl.facts dt{font-family:var(--f-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);padding-top:3px;}
+dl.facts dd{margin:0;}
+.note-block{border-top:1px solid var(--line);padding-top:10px;font-size:14.5px;line-height:1.45;}
+.note-block h4{margin:0 0 4px;font-family:var(--f-mono);font-weight:400;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);}
+.note-block.craft p{font-style:italic;margin:0;}
+.note-block.tell h4,.note-block.interp h4{color:var(--amber);}
+.note-block p{margin:0;}
+.src{font-family:var(--f-mono);font-size:9.5px;color:var(--faint);margin:0;}
+.enroute{font-family:var(--f-mono);font-size:11px;color:var(--sky);}
+
+/* light tab */
+.clockrow{display:flex;align-items:center;gap:10px;}
+.clockrow input{flex:1;accent-color:var(--sky);}
+.clockrow output{font-family:var(--f-mono);font-size:14px;font-variant-numeric:tabular-nums;min-width:48px;text-align:right;}
+.ktemp{display:flex;align-items:center;gap:10px;font-family:var(--f-mono);font-size:11px;color:var(--muted);}
+.ktemp i{width:40px;height:16px;border-radius:2px;display:inline-block;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);}
+.daybar{height:14px;border-radius:2px;position:relative;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);}
+.daybar b{position:absolute;top:-3px;width:2px;height:20px;background:var(--text);}
+.dayticks{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:8.5px;color:var(--faint);margin-top:3px;}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;}
+.btn{background:#20252a;border:1px solid var(--line);border-radius:3px;padding:7px 11px;cursor:pointer;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.04em;}
+.btn:hover{border-color:var(--sky);}
+.btn[aria-pressed="true"]{background:#2b3a46;border-color:var(--sky);}
+.sys{display:flex;flex-direction:column;gap:12px;}
+.sys article{display:grid;grid-template-columns:1fr auto;gap:2px 10px;}
+.sys h4{margin:0;font-family:var(--f-display);font-weight:700;font-size:18px;}
+.sys .state{font-family:var(--f-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;align-self:center;padding:2px 6px;border-radius:2px;border:1px solid var(--line);color:var(--faint);}
+.sys .state.on{color:#0E1012;background:var(--sky);border-color:var(--sky);}
+.sys p{grid-column:1 / -1;margin:0;font-size:14px;line-height:1.42;color:#cfc9bd;}
+
+/* map tab */
+.mapnote{font-size:12.5px;line-height:1.4;color:var(--muted);font-style:italic;margin:0;}
+.lvchips{display:flex;flex-wrap:wrap;gap:6px;}
+.lvchips button{background:none;border:1px solid var(--line);border-radius:2px;padding:4px 8px;font-family:var(--f-mono);font-size:10px;cursor:pointer;color:var(--muted);}
+.lvchips button[aria-pressed="true"]{color:var(--text);border-color:var(--sky);}
+.svgwrap{overflow-x:auto;background:#0B0D0F;border:1px solid var(--line);border-radius:3px;}
+.svgwrap svg{display:block;width:100%;height:auto;}
+.svgwrap svg [data-go]{cursor:pointer;}
+.svgwrap svg [data-go]:hover{filter:brightness(1.25);}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;font-family:var(--f-mono);font-size:9.5px;color:var(--muted);}
+.legend span{display:flex;align-items:center;gap:6px;}
+.legend i{width:16px;height:9px;border-radius:1px;display:inline-block;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);flex:none;}
+
+/* index tab */
+.idx h3{margin:4px 0 6px;font-family:var(--f-mono);font-weight:400;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);}
+.idx ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.idx li button{width:100%;display:grid;grid-template-columns:12px 1fr;gap:3px 9px;align-items:start;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:7px 2px;text-align:left;cursor:pointer;}
+.idx li button:hover b{color:var(--sky);}
+.idx li i{width:12px;height:12px;border-radius:2px;margin-top:2px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}
+.idx li b{font-family:var(--f-display);font-weight:700;font-size:16px;line-height:1.05;}
+.idx li small{grid-column:2;font-family:var(--f-mono);font-size:9.5px;color:var(--muted);}
+.qref{width:100%;border-collapse:collapse;font-size:13.5px;}
+.qref td{border-bottom:1px solid var(--line-soft);padding:6px 4px;vertical-align:top;line-height:1.35;}
+.qref td:first-child{color:var(--muted);width:48%;}
+.qref button{background:none;border:0;padding:0;cursor:pointer;text-align:left;color:var(--sky);text-decoration:underline;text-decoration-color:rgba(156,198,232,.35);text-underline-offset:2px;}
+.tells{margin:0;padding-left:18px;font-size:14px;line-height:1.45;display:flex;flex-direction:column;gap:4px;}
+.tells button{background:none;border:0;padding:0;cursor:pointer;color:var(--amber);font-family:var(--f-mono);font-size:10px;margin-left:4px;}
+
+/* dock */
+#dock{position:absolute;left:var(--gut);right:calc(var(--panel-w) + 32px);bottom:calc(var(--gut) + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;
+  background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px 12px;backdrop-filter:blur(6px);}
+.ctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.ctrl .ib{width:34px;height:30px;display:grid;place-items:center;background:#20252a;border:1px solid var(--line);border-radius:3px;cursor:pointer;padding:0;}
+.ctrl .ib:hover{border-color:var(--sky);}
+.ctrl .ib svg{width:14px;height:14px;fill:var(--text);}
+.ctrl .ib.play{width:44px;background:#2b3a46;border-color:#4d6477;}
+.ctrl select{background:#20252a;color:var(--text);border:1px solid var(--line);border-radius:3px;padding:6px 6px;font-family:var(--f-mono);font-size:10.5px;}
+.ctrl .sp{flex:1;}
+.ctrl .stopname{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;}
+#route{position:relative;display:flex;height:22px;gap:1px;align-items:stretch;}
+#route button{flex:1 1 0;min-width:2px;border:0;padding:0;cursor:pointer;border-radius:1px;position:relative;opacity:.85;}
+#route button:hover{opacity:1;transform:scaleY(1.25);}
+#route button.cur{outline:2px solid var(--sky);outline-offset:1px;opacity:1;z-index:1;}
+#route button.done{opacity:.45;}
+.routelv{display:flex;font-family:var(--f-mono);font-size:8.5px;letter-spacing:.1em;color:var(--faint);}
+.routelv span{overflow:hidden;white-space:nowrap;border-left:1px solid var(--line);padding-left:4px;}
+
+#hint{position:absolute;left:50%;top:calc(var(--gut) + env(safe-area-inset-top,0px));transform:translateX(calc(-50% - var(--panel-w)/2));font-family:var(--f-mono);font-size:10.5px;color:var(--muted);
+  background:rgba(10,12,14,.7);padding:6px 10px;border-radius:3px;transition:opacity 1s;pointer-events:none;white-space:nowrap;}
+#touch{position:absolute;left:var(--gut);bottom:calc(128px + env(safe-area-inset-bottom,0px));display:none;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(2,40px);gap:4px;}
+#touch button{background:rgba(20,24,28,.75);border:1px solid var(--line);border-radius:4px;font-family:var(--f-mono);font-size:13px;touch-action:none;}
+#touch button:nth-child(1){grid-column:2;}
+#sheetToggle{display:none;}
+#fail{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;font-size:16px;color:var(--muted);}
+
+@media (max-width: 860px){
+  :root{--panel-w:0px;--gut:12px;}
+  #plate{max-width:calc(100vw - 24px);}
+  #pName{font-size:36px;}
+  #readouts{grid-template-columns:repeat(4,auto);gap:2px 12px;padding:6px 8px;}
+  #readouts b{font-size:11px;}
+  #panel{left:var(--gut);right:var(--gut);width:auto;top:auto;bottom:calc(112px + env(safe-area-inset-bottom,0px));height:44vh;}
+  #panel.collapsed{height:auto;}
+  #panel.collapsed .tabBody{display:none!important;}
+  #sheetToggle{display:block;flex:none;background:none;border:0;border-left:1px solid var(--line);padding:0 12px;cursor:pointer;font-family:var(--f-mono);font-size:12px;color:var(--muted);}
+  #dock{right:var(--gut);}
+  #caption{transform:translateX(-50%);bottom:auto;top:40%;font-size:15px;max-width:calc(100vw - 32px);}
+  #cagePanel{right:var(--gut);top:auto;bottom:calc(112px + 44vh + 20px);width:160px;}
+  #hint{transform:translateX(-50%);top:auto;bottom:calc(120px + env(safe-area-inset-bottom,0px));white-space:normal;text-align:center;width:max-content;max-width:calc(100vw - 32px);}
+  .ctrl .stopname{display:none;}
+  #touch{display:grid;}
+}
+@media (max-width: 860px) and (hover:hover){ #touch{display:none;} }
+@media (prefers-reduced-motion: reduce){ #glare,#lids,#caption,#hint{transition:none;} }
+</style>
+
+<div id="app">
+  <canvas id="gl" tabindex="0" aria-label="First-person view of VORD Headquarters. Drag to look around; use W A S D or arrow keys to walk."></canvas>
+  <div id="glare"></div><div id="lids"></div><div id="vig"></div>
+  <div id="labels" aria-hidden="false"></div>
+
+  <header id="plate">
+    <div class="eyebrow" id="pEyebrow">Surface · 0 m</div>
+    <h1 id="pName">The site</h1>
+    <div id="pOff">Nipigon Deep Physics Laboratory (provisional) · northern Ontario</div>
+    <div class="floorline"><i id="pSw"></i><span id="pFloor">Gravel and concrete</span></div>
+    <div id="readouts">
+      <div><span>Depth</span><b id="rDepth">0 m</b></div>
+      <div><span>Rock</span><b id="rRock">—</b></div>
+      <div><span>Facility clock</span><b id="rClock">10:20</b></div>
+      <div><span>Clearance</span><b id="rTier">Public</b></div>
+    </div>
+  </header>
+
+  <div id="caption" role="status" aria-live="polite"></div>
+  <div id="hint">Drag to look · WASD or arrow keys to walk · click a door sign to go there</div>
+
+  <div id="cagePanel" hidden>
+    <h3 id="cageTitle">Cage</h3>
+    <div id="cageBtns" style="display:flex;flex-direction:column;gap:6px"></div>
+    <p id="cageNote"></p>
+  </div>
+
+  <div id="touch" aria-label="Walk controls">
+    <button type="button" data-k="f" aria-label="Walk forward">▲</button>
+    <button type="button" data-k="l" aria-label="Turn left">◀</button>
+    <button type="button" data-k="b" aria-label="Walk back">▼</button>
+    <button type="button" data-k="r" aria-label="Turn right">▶</button>
+  </div>
+
+  <aside id="panel" aria-label="Codex panel">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tb-here" aria-selected="true" data-tab="here">Here</button>
+      <button type="button" role="tab" id="tb-light" aria-selected="false" data-tab="light">Light</button>
+      <button type="button" role="tab" id="tb-map" aria-selected="false" data-tab="map">Map</button>
+      <button type="button" role="tab" id="tb-index" aria-selected="false" data-tab="index">Index</button>
+      <button type="button" id="sheetToggle" aria-expanded="true" aria-label="Collapse codex panel">▾</button>
+    </div>
+    <div class="tabBody" id="tab-here" role="tabpanel"></div>
+    <div class="tabBody" id="tab-light" role="tabpanel" hidden>
+      <div>
+        <div class="eyebrow" style="margin-bottom:8px">Circadian tuning · facility clock</div>
+        <div class="clockrow"><input type="range" id="clock" min="0" max="1439" step="1" value="620" aria-label="Facility clock"><output id="clockOut">10:20</output></div>
+        <div class="daybar" id="daybar"><b id="daybarMark"></b></div>
+        <div class="dayticks"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
+      </div>
+      <div class="ktemp"><i id="kSw"></i><span id="kTxt">Working day · cold blue-white</span></div>
+      <div class="btnrow">
+        <button type="button" class="btn" id="runDay" aria-pressed="false">Run a day in 60 s</button>
+        <button type="button" class="btn" id="holdClock" aria-pressed="false">Hold the clock</button>
+      </div>
+      <p class="mapnote">The cycle runs on the facility’s own 24-hour schedule, not the sun outside (Ch2 Sc1 note). Working rooms stay lit overnight; residential and circulation spaces dim.</p>
+      <div class="sys" id="sys"></div>
+    </div>
+    <div class="tabBody" id="tab-map" role="tabpanel" hidden>
+      <p class="mapnote">Writer’s schematic only. The facility is a network of drifts and halls with no vantage point: nobody inside has ever seen this view (§3 Geometry). Not to scale; the 1.5 km walk is compressed.</p>
+      <div class="eyebrow">Section · surface to 2320</div>
+      <div class="svgwrap" id="sectionWrap"></div>
+      <div class="eyebrow">Plan · one level</div>
+      <div class="lvchips" id="lvchips"></div>
+      <div class="svgwrap" id="planWrap"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="tabBody idx" id="tab-index" role="tabpanel" hidden></div>
+  </aside>
+
+  <footer id="dock">
+    <div class="ctrl">
+      <button type="button" class="ib" id="bPrev" aria-label="Previous stop"><svg viewBox="0 0 16 16"><path d="M3 2h2v12H3zM14 2v12L6 8z"/></svg></button>
+      <button type="button" class="ib play" id="bPlay" aria-label="Play guided descent"><svg viewBox="0 0 16 16" id="playIco"><path d="M4 2l10 6-10 6z"/></svg></button>
+      <button type="button" class="ib" id="bNext" aria-label="Next stop"><svg viewBox="0 0 16 16"><path d="M11 2h2v12h-2zM2 2v12l8-6z"/></svg></button>
+      <span class="stopname" id="stopName">Stop 1 of 40</span>
+      <span class="sp"></span>
+      <select id="tourSet" aria-label="Which stops the guided descent visits">
+        <option value="key">Key stops</option>
+        <option value="all">Every room</option>
+      </select>
+      <select id="speed" aria-label="Walking speed">
+        <option value="0.5">0.5×</option>
+        <option value="1" selected>1×</option>
+        <option value="2">2×</option>
+        <option value="4">4×</option>
+      </select>
+      <button type="button" class="btn" id="bSound" aria-pressed="false">Sound off</button>
+    </div>
+    <div id="route" aria-label="Route strip: every stop from surface to 2320, coloured by floor"></div>
+    <div class="routelv" id="routelv"></div>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const app=$('#app');
+if(!window.THREE){ app.insertAdjacentHTML('beforeend','<div id="fail">The 3D library did not load, so the walkthrough cannot start. Check your connection and reload.</div>'); return; }
+
+/* =========================================================
+   LORE DATA — from Trinity Living Lore:
+   VORD Headquarters — Facility & Interior Codex §1–§11,
+   Capabilities Codex §4, and HQ Scene Review Notes.
+   ========================================================= */
+const EYE=1.65, T=0.06;
+const LEVELS={
+  surf:{y:120,name:'Surface',depth:0,short:'SURFACE'},
+  l2070:{y:0,name:'2070',depth:2070,short:'2070'},
+  l2200:{y:-39,name:'2200',depth:2200,short:'2200'},
+  plant:{y:-57,name:'Plant Level',depth:2260,short:'PLANT'},
+  l2320:{y:-75,name:'2320',depth:2320,short:'2320'}
+};
+const LV_ORDER=['surf','l2070','l2200','plant','l2320'];
+const ZONES={
+  surface:{floor:'#77756F',label:'Gravel and concrete',area:'Above ground'},
+  mine:{floor:'#4B4139',label:'Raw rock, unpainted',area:'The approach · working mine'},
+  drys:{floor:'#A6AEB0',label:'Wet tile',area:'The threshold'},
+  w2070:{floor:'#ECE5D8',label:'White, faintly warm',area:'Cover laboratory'},
+  hard:{floor:'#8C9094',label:'Not specified in the codex',area:'Behind the seam'},
+  central:{floor:'#D8CCB4',label:'Warm bone',area:'Central · shared'},
+  west:{floor:'#A7B4BF',label:'Pale blue-grey',area:'West · Research'},
+  east:{floor:'#34383C',label:'Dark graphite',area:'East · Operations'},
+  res:{floor:'#C49F72',label:'Deeper warm sand',area:'Residential'},
+  plant:{floor:'#6C6862',label:'Bare concrete, least finished',area:'Plant'},
+  deep:{floor:'#161616',label:'Near-black, matte',area:'Deep level · Tier 1'}
+};
+const DRESS={
+  surface:'Outside clothes, then mine gear.',
+  mine:'Mine gear: coveralls, hard hats, cap lamps.',
+  drys:'Nothing of your own crosses. Clothes are issued at entry, daily.',
+  w2070:'Varies by role: laboratory technicians, administration, visiting students, and the genuine contracted security force.',
+  hard:'Tier 2 in both registers.',
+  central:'Both wings: white coats and security-pattern uniforms, clustering apart.',
+  west:'White lab coats over personal attire, the only visible individuality in the facility.',
+  east:'Military-cut uniforms that deliberately read as site security.',
+  res:'Personal clothes.',
+  plant:'Plant crew.',
+  deep:'Whoever has been summoned, and the six who are cleared.'
+};
+const HEAR={
+  surface:'Headframe machinery, haul trucks, wind off the lake country.',
+  mine:'Loud. Ventilation fans, machinery, and distant scheduled blasting arriving as dull thuds.',
+  drys:'Showers running, boots on wet tile.',
+  clean:'The constant air-handling thrum, felt more than heard. Hard sealed surfaces carry footsteps a long way: you hear people before you see them, and they hear you.',
+  garden:'Water in the hydroponic channels. The thrum is softer here.',
+  plant:'Loud, hot and industrial. The heart of the building, running constantly.',
+  deep:'The thrum is always there. Nobody else is.',
+  sim:'Near silence at the end of a run.'
+};
+const QREF=[
+  ['Arrival, threshold, transformation','collar','The cage, the walk, the drys'],
+  ['Normality, warmth, the cover holding','c2070','2070, the cover laboratory'],
+  ['Charlotte working','west3','West 3, or the Analysis Floor'],
+  ['Charlotte and Darton','darton','His office, glass to the Analysis Floor'],
+  ['A crisis unfolding','opsfloor','The Operations Floor, East'],
+  ['Venus training','sim1','Simulator Halls, East'],
+  ['Two wings forced together','transfer','Central Mess, the Spine, the Transfer Bay'],
+  ['A meeting meant to be seen','fishbowl','The Fishbowl'],
+  ['A meeting meant not to be','conf3','Any windowless Central conference room'],
+  ['Something human and unguarded','garden','The Garden, the quiet room, the Beach'],
+  ['Power, authority, cold','operator','2320'],
+  ['Everything has gone wrong','refuge22','A refuge station']
+];
+const TELLS=[
+  ['The refrigeration plant is oversized for the declared facility.','refrig'],
+  ['Air-handling capacity exceeds declared occupancy.','ahu'],
+  ['Power draw does not reconcile against published experiments.','power'],
+  ['Equipment orders arrive that no listed laboratory ever receives.','transfer'],
+  ['The mine’s excavation volume exceeds its ore production, year after year.','drift'],
+  ['There are no legacy systems anywhere. Nothing is dated.','spineC'],
+  ['A cage stop Charlotte has never pressed.','lobby23'],
+  ['A drift that does not appear on the emergency egress map.',null]
+];
+
+const spaces=[], byId={}, conns=[];
+function S(id,lv,r,o){
+  const s=Object.assign({id,lv,x0:r[0],z0:r[1],x1:r[2],z1:r[3],h:3.1,style:'clean',ceil:'panel',kind:'room',light:'clean',gaps:[]},o||{});
+  s.y=LEVELS[lv].y; s.cx=(s.x0+s.x1)/2; s.cz=(s.z0+s.z1)/2;
+  spaces.push(s); byId[id]=s; return s;
+}
+function C(a,b,type,o){ conns.push(Object.assign({a,b,type:type||'door'},o||{})); }
+
+/* ---------- SURFACE ---------- */
+S('yard','surf',[-252,-30,-214,30],{zone:'surface',style:'none',ceil:'none',kind:'yard',light:'surface',name:'The site',off:'Nipigon Deep Physics Laboratory (provisional) · northern Ontario',
+  note:'A commercially producing deep hard-rock mine, owned outright through a Finance/Logistics front, with a publishing deep-underground physics laboratory operating inside it. Both are completely real: the mine ships ore and takes inspections; the laboratory publishes peer-reviewed papers and hosts graduate students.',
+  see:'Headframe, mill, mine administration, the laboratory surface building. The only real sky on this route.',
+  craft:'A mine’s whole purpose is digging, so centuries of excavation never need explaining. The noise is the cover. Construction is permanent: there is always work happening somewhere, and it never means anything.',
+  interp:'Exact location and front-company name are provisional in the codex. Surface layout is illustrative.',src:'Facility Codex §1 · Capabilities Codex §4b',
+  view:{at:[-238,13],look:[-200,-2],pitch:.2}});
+S('change','surf',[-214,-4,-204,4],{zone:'surface',style:'metal',light:'drys',name:'Surface building',off:'Laboratory surface building · change room',
+  note:'Stage 1 of the threshold ritual, performed every day by everyone, the Operator included. Ordinary from the street. Change out of outside clothing into mine gear.',
+  craft:'A threshold rite, not a commute. Charlotte has done it so many times she has stopped noticing. The reader should never stop noticing. Save the full-fidelity version for a descent that carries weight.',
+  scene:'Arrival, threshold, transformation',src:'Facility Codex §2',props:'change'});
+S('collar','surf',[-204,-4,-196,4],{zone:'surface',style:'metal',h:6,light:'drys',name:'The cage',off:'Shaft collar · 0 → 2,070 m',cage:{x:-200,z:0,shaft:'main'},hole:[-201.5,-1.5,-198.5,1.5],
+  note:'Stage 2. Five to ten minutes of descent, shared with mine crew going somewhere else entirely. Depth changes at exactly one stage of the ritual, and this is it.',
+  scenes:'Ch6 Sc3 (Darton at the cage with the paperwork) · Ch8 Sc5 (Michael walks Hamster to the cage)',src:'Facility Codex §2',props:'collar'});
+
+/* ---------- 2070: THE APPROACH AND THE COVER LAB ---------- */
+S('station','l2070',[-204,-4,-196,4],{zone:'mine',style:'rock',h:5,ceil:'rock',light:'rock',name:'2070 shaft station',off:'Mine level 2070 · station',cage:{x:-200,z:0,shaft:'main'},hole:[-201.5,-1.5,-198.5,1.5],
+  note:'The cage opens onto a working mine level. From here you walk. Ambient rock runs about 42 °C at this depth; the facility is in permanent thermodynamic combat with the planet.',
+  src:'Facility Codex §2–§3',view:{at:[-200,0],look:[-188,0]},props:'mine'});
+S('drift','l2070',[-196,-2.5,-90,2.5],{zone:'mine',style:'rock',h:4.4,ceil:'rock',kind:'corridor',light:'rock',name:'The walk',off:'Raw mine drift · about 1.5 km',
+  note:'Stage 3. Roughly 1.5 km through raw mine drift: bolted and screened rock, unpainted, hot, loud. This is not the facility. This is the approach.',
+  see:'Rock bolts and mesh screen, vent ducting, a string of lamps, cap lamps coming the other way.',
+  interp:'Compressed to about 100 m for this guide.',src:'Facility Codex §2',caption:'This is not the facility. This is the approach.',props:'mine',tellIds:['drift']});
+S('carwash','l2070',[-114,2.5,-104,10],{zone:'mine',style:'rock',h:4.4,ceil:'rock',light:'rock',name:'The carwash',off:'Underground equipment wash',
+  note:'Equipment follows a parallel path to people: through the underground carwash, or sealed on the surface and opened only after cleaning.',src:'Facility Codex §2',props:'carwash'});
+S('drys','l2070',[-90,-6,-76,6],{zone:'drys',style:'tile',h:3,light:'drys',name:'The drys',off:'Change and shower facility (real mining term)',
+  note:'Stage 4. Boots washed, mine gear removed, full shower including a complete hair wash. Non-negotiable, for everyone, every time.',
+  src:'Facility Codex §2',caption:'Full shower, complete hair wash. Everyone, every time.',props:'drys'});
+S('issue','l2070',[-76,-3,-68,3],{zone:'w2070',h:3,light:'clean',name:'The line',off:'Clothing issue · dirty to clean',floorSplit:{x:-72,zone:'drys'},
+  note:'Stages 5 and 6. Dress in issued clothing, then cross the line: dirty to clean. From here on the air is at positive pressure and filtered to carry no scent at all. After the raw mine walk, the absence of smell is one of the first things a newcomer registers and cannot name.',
+  craft:'You can read the entire organisational chart off a corridor at a glance, and it costs VORD nothing, because knowing a person’s role reveals nothing about what they know.',
+  src:'Facility Codex §2, §4 (Air), §5',caption:'Cross the line. Dirty to clean.',props:'issue'});
+S('c2070','l2070',[-68,-2,42,2],{zone:'w2070',h:3,kind:'corridor',light:'circ',name:'2070',off:'Cover laboratory · main corridor',
+  note:'Real, publishing, and genuinely good. Seamless resin floor, white and faintly warm, coved up the walls with no skirting joint. Bright, cluttered, collegiate, cheerful: the most normal place in the facility and the only one that ever has guests.',
+  craft:'The people here are doing real science that will be cited. Some of them are excellent. None of them know. Whenever VORD risks reading as sinister, put a scene here.',
+  scene:'Normality, warmth, the cover holding',src:'Facility Codex §6',props:'corr'});
+S('brief','l2070',[-64,-10,-52,-2],{zone:'w2070',name:'Visitor briefing room',off:'2070 · visitor briefing',note:'Where graduate students are walked through cleanliness protocol. A wall of framed published papers.',src:'Facility Codex §6',props:'brief'});
+S('admin','l2070',[-50,-14,-32,-2],{zone:'w2070',name:'2070 Admin',off:'Laboratory offices · open plan',note:'Laboratory offices, open plan, whiteboards, the ordinary clutter of working science.',src:'Facility Codex §6',props:'admin'});
+S('mess70','l2070',[-30,-10,-20,-2],{zone:'w2070',light:'circ',name:'2070 Mess',off:'2070 · mess',note:'Small. Coffee, vending, six tables.',src:'Facility Codex §6',props:'mess70'});
+S('chem','l2070',[-18,-10,-6,-2],{zone:'w2070',name:'Clean chemistry lab',off:'2070 · clean chemistry laboratory',note:'Part of the real laboratory’s working kit. Tier 3 staff, real results.',src:'Facility Codex §6',props:'chem'});
+S('lowbg','l2070',[-4,-10,8,-2],{zone:'w2070',name:'Low-background counting',off:'2070 · low-background counting facility',note:'Shielded counting stations, part of the real laboratory. Tier 3.',src:'Facility Codex §6',props:'lowbg'});
+S('refuge70','l2070',[10,-6,14,-2],{zone:'w2070',h:2.6,light:'hard',name:'Refuge station',off:'2070 · mine refuge chamber',refuge:true,props:'refuge'});
+S('ladderRail','l2070',[-64,2,-38,5],{zone:'w2070',h:3,kind:'corridor',light:'circ',name:'The Ladder Labs',off:'2070 · parallel experiment drifts',
+  note:'Smaller experiments in a series of parallel drifts. Real underground-laboratory terminology, kept deliberately.',src:'Facility Codex §6'});
+[['rung1',-63,-59],['rung2',-57,-53],['rung3',-51,-47],['rung4',-45,-41]].forEach((r,i)=>S(r[0],'l2070',[r[1],5,r[2],16],{zone:'w2070',h:3,name:'Ladder Lab '+(i+1),off:'2070 · Ladder Labs',note:'One of the parallel drifts. A small experiment, racked instrumentation, benches.',src:'Facility Codex §6',props:'rung'}));
+S('hallA','l2070',[-34,2,-20,26],{zone:'w2070',h:16,ceil:'high',name:'Experiment Hall A',off:'2070 · large excavation',pitch:.28,
+  note:'Large excavations housing detector assemblies. Cathedral-scale, and the only spaces in the entire facility with real height.',interp:'Detector designs are illustrative.',src:'Facility Codex §6',props:'hallA'});
+S('hallB','l2070',[-16,2,-2,26],{zone:'w2070',h:16,ceil:'high',name:'Experiment Hall B',off:'2070 · large excavation',pitch:.28,
+  note:'Cathedral-scale. The only spaces in the facility with real height.',interp:'Detector designs are illustrative.',src:'Facility Codex §6',props:'hallB'});
+S('hallC','l2070',[10,2,24,26],{zone:'w2070',h:16,ceil:'high',name:'Experiment Hall C',off:'2070 · large excavation',pitch:.28,
+  note:'Cathedral-scale. The only spaces in the facility with real height.',interp:'Detector designs are illustrative.',src:'Facility Codex §6',props:'hallC'});
+S('svc','l2070',[4,2,7,24],{zone:'w2070',h:3,kind:'corridor',style:'service',light:'clean',name:'2070 service corridor',off:'2070 · plant-side circulation',
+  note:'A plain service corridor running away from the laboratories. The seam is off this corridor.',src:'Facility Codex §2'});
+S('vest','l2070',[4,24,7,28],{zone:'hard',h:3,style:'hard',light:'hard',hub:true,mantrap:true,name:'The seam',off:'Plant access door · mantrap vestibule',
+  note:'On the face: a grey, unremarkable plant access door, stencilled to read as mechanical or electrical infrastructure. Behind it, a vestibule working as a mantrap: the outer door will not release until the inner is sealed. Sensors that do not look like sensors. Hardening out of all proportion to what the door appears to protect.',
+  see:'Nobody is ever stopped at this door. Anyone who reaches it either belongs or was quietly intercepted well upstream. Defence is layered outward so the seam itself never has to visibly do anything.',
+  craft:'If this door is ever used defensively on the page, something has already failed catastrophically. A very good place for exactly one scene, once, late.',
+  src:'Facility Codex §2',caption:'Nobody is ever stopped at this door.'});
+S('lobby70','l2070',[2,28,9,38],{zone:'hard',style:'hard',h:3.2,light:'hard',name:'Internal cage · 2070',off:'Behind the seam',cage:{x:5.5,z:36,shaft:'inner'},hole:[4,34,7,38],
+  note:'VORD nests a second boundary inside the published clean/dirty line. It stays invisible because everyone on site is already used to being told where they cannot go, and to that instruction being legitimate.',
+  interp:'The codex doesn’t say how you get from the seam down to 2200. This guide assumes an internal cage (a winze) behind the seam, serving 2200, the Plant Level and 2320. Scene notes send people “to the cage” from the Spine, which fits.',
+  src:'Facility Codex §2, §10'});
+
+/* ---------- 2200 ---------- */
+const SPINE_NOTE='The primary circulation drift, running the length of 2200 from West to East with Central at its midpoint. Widest corridor in the facility, artificial skylights along its full run, benches at intervals that nobody planned and everybody uses. Everyone passes through the Spine. It is the closest thing this place has to a street.';
+S('lobby22','l2200',[2,28,9,38],{zone:'central',h:3.2,light:'circ',name:'Internal cage · 2200',off:'2200 Central · cage stop',cage:{x:5.5,z:36,shaft:'inner'},hole:[4,34,7,38],
+  note:'Where Tier 2 arrives each day and leaves each night. The cage is the only way in or out of HQ; leaving by it after being told to go home is exile made physical.',
+  scenes:'Ch6 Sc3 (Darton at the cage) · Ch8 Sc5 (Michael walks Hamster to the cage)',interp:'Internal cage and its position are this guide’s assumption.',src:'Scene notes Ch6 Sc3, Ch8 Sc5'});
+S('cagecorr','l2200',[4,4,7,28],{zone:'central',h:3,kind:'corridor',light:'circ',name:'Cage corridor',off:'2200 Central',note:'The short run between the cage and the Spine.',interp:'Connecting corridor invented for this guide.'});
+S('spineW','l2200',[-120,-4,-36,4],{zone:'west',h:4.2,ceil:'sky',kind:'corridor',light:'circ',name:'The Spine · West',off:'2200 Main · West',
+  note:SPINE_NOTE+' Here the floor turns pale blue-grey: Research, the quietest wing. Staff say “she’s west side”, and it silently encodes department, clearance and social distance.',
+  craft:'West and East do not touch. When Charlotte is sent into the field she crosses from West into East and the floor changes colour beneath her. One sentence. Do not explain it.',
+  scenes:'Ch8 Sc5 (the bench at the mouth of West) · Ch2 Sc1 (the walk West to East)',src:'Facility Codex §4, §7, §8',props:'spine'});
+S('spineC','l2200',[-36,-4,36,4],{zone:'central',h:4.2,ceil:'sky',kind:'corridor',light:'circ',name:'The Spine',off:'2200 Main · Central',
+  note:SPINE_NOTE,craft:'Central is the only ground where West and East routinely occupy the same room, which makes every space around it quietly political.',
+  scenes:'Ch7 Sc2 (staff glance into the Fishbowl) · Ch2 Sc1 · Ch8 Sc5',scene:'Two wings forced together',src:'Facility Codex §7',props:'spine',tellIds:['spineC']});
+S('spineE','l2200',[36,-4,120,4],{zone:'east',h:4.2,ceil:'sky',kind:'corridor',light:'circ',name:'The Spine · East',off:'2200 Main · East',
+  note:SPINE_NOTE+' Here the floor turns dark graphite, which hides equipment wear: Operations. Louder, heavier, warmer, the only wing that feels used rather than maintained. Someone from West being seen East is remarked on, mildly, by everyone.',
+  craft:'Charlotte’s field deployment is an architectural transgression. It should read to her as trespass before it reads as danger.',
+  scenes:'Ch2 Sc1 (the floor change is the payoff)',src:'Facility Codex §4, §8',props:'spine'});
+S('mess22','l2200',[-34,-22,-12,-4],{zone:'central',h:4,ceil:'sky',light:'circ',name:'Central Mess',off:'2200 Central Mess',
+  note:'The main dining hall. Long communal tables, a servery, decent food in genuine quantity because there is nothing else and management knows it. Artificial sky overhead. Open twenty-four hours, because shifts don’t align.',
+  see:'Seating self-segregates by wing without anyone having decided it should. White coats cluster; uniforms cluster; the tables between are usually empty. Vitamin D sits on the tables like salt.',
+  interp:'Alcohol on scheduled evenings at a controlled ration is provisional in the codex.',scene:'Two wings forced together',src:'Facility Codex §3, §7',props:'mess22'});
+S('fishbowl','l2200',[-10,-12,0,-4],{zone:'central',light:'circ',name:'The Fishbowl',off:'Central Conference 1',
+  note:'The only glass-fronted meeting room in the facility, on the Spine, deliberately visible. A meeting held in the Fishbowl is a meeting that wants to be seen happening. Everything sensitive goes elsewhere. Staff read the choice of room as information, and they’re right to.',
+  scenes:'Ch7 Sc2 (the council vote; Voss uses the glass as misdirection, proposed)',scene:'A meeting meant to be seen',src:'Facility Codex §7',props:'conf'});
+S('conf2','l2200',[1,-10,7,-4],{zone:'central',name:'Central Conference 2',off:'Central Conference 2',note:'Windowless, flush-walled, identical, a screen at one end. Bookable. Utterly characterless, and that is itself the point.',scene:'A meeting meant not to be',interp:'Room numbers are provisional.',src:'Facility Codex §7',props:'conf'});
+S('conf3','l2200',[8,-10,14,-4],{zone:'central',name:'Central Conference 3',off:'Central Conference 3',note:'Windowless, flush-walled, identical, a screen at one end. Bookable. Utterly characterless, and that is itself the point.',scene:'A meeting meant not to be',src:'Facility Codex §7',props:'conf'});
+S('garden','l2200',[16,-20,34,-4],{zone:'central',h:3.6,ceil:'sky',light:'garden',name:'The Garden',off:'2200 Central Horticulture',
+  note:'A hydroponic bay under grow lights: leafy greens, herbs, tomatoes, a few flowering things that serve no purpose. Warm, humid, smells of soil and green, which after the scentless corridors is overwhelming the first time. Small, oversubscribed, with a waiting list to tend it that people take unreasonably seriously.',
+  craft:'The only living green thing 2.2 kilometres underground. Whoever is found in the Garden is telling you something about themselves without saying it.',
+  interp:'Who tends it is an open thread. The room is left empty here on purpose.',scene:'Something human and unguarded',src:'Facility Codex §7',caption:'Soil and green, after nothing at all.',props:'garden'});
+S('transfer','l2200',[-34,4,-22,16],{zone:'central',light:'circ',name:'The Transfer Bay',off:'Off Central · West-to-East handoff',
+  note:'Where West hands off to East. Double-doored, off Central. Research delivers to scheduled slots; Operations collects. Neither department owns it, and that is deliberate: it sits on shared ground so neither wing has to enter the other’s.',
+  see:'The handoff is documentary: signatures, manifests, serial numbers. Two wings of one organisation communicating like separate companies.',scene:'Two wings forced together',src:'Facility Codex §7',props:'transfer',tellIds:['transfer']});
+S('conf4','l2200',[-20,4,-14,10],{zone:'central',name:'Central Conference 4',off:'Central Conference 4',note:'Windowless, flush-walled, identical. Bookable.',src:'Facility Codex §7',props:'conf'});
+S('conf5','l2200',[-13,4,-7,10],{zone:'central',name:'Central Conference 5',off:'Central Conference 5',note:'Windowless, flush-walled, identical. Bookable.',src:'Facility Codex §7',props:'conf'});
+S('gym','l2200',[-6,4,3,16],{zone:'central',name:'General Gymnasium',off:'2200 Central',note:'Standard fitness equipment, weights, cardio, a small studio room. Used by everyone, mostly researchers and administrative staff.',src:'Facility Codex §7',props:'gym'});
+S('medical','l2200',[8,4,20,14],{zone:'central',name:'Medical',off:'2200 Central · occupational health',note:'General occupational health, the light-therapy suite, routine clinical care. Distinct from Operations’ Trauma Medical, east side.',interp:'Where psychiatric services sit is undecided in the codex.',scenes:'Ch6 Sc3 (Charlotte discharges herself)',src:'Facility Codex §7',props:'medical'});
+S('beach','l2200',[8,14,14,20],{zone:'central',h:3,ceil:'beach',light:'beach',name:'The Beach',off:'Light-therapy room',
+  note:'Small rooms fitted with high-intensity full-spectrum panels banked floor to ceiling. Bright enough that you close your eyes. Wooden slat benches, warm air, a timer. Exposure is medically mandated and logged against your file like a respirator fit test.',
+  see:'Sunlight here is a compliance item. You are scheduled for it. Staff call it the Beach, a joke made so many times it has stopped being one.',
+  craft:'A character skipping their light hours is a warning sign that never has to be explained. A character taking someone else’s slot is a kindness that never has to be stated.',
+  scene:'Something human and unguarded',src:'Facility Codex §3, §7',props:'beach'});
+S('beach2','l2200',[14,14,20,20],{zone:'central',h:3,ceil:'beach',light:'beach',name:'The Beach (2)',off:'Light-therapy room',note:'A second light-therapy room. The Beach is several small rooms.',src:'Facility Codex §3',props:'beach'});
+S('southcorr','l2200',[22,4,25,40],{zone:'central',h:3,kind:'corridor',light:'circ',name:'Central south corridor',off:'2200 Central',note:'Recreation opens off this corridor, and it runs on to Residential.',interp:'Connecting corridor invented for this guide.'});
+S('common','l2200',[25,8,35,18],{zone:'central',light:'circ',name:'Common room',off:'2200 Central · recreation',note:'Sofas, a large screen, film nights on a rotating schedule that people complain about and attend anyway.',src:'Facility Codex §7',props:'common'});
+S('games','l2200',[25,20,35,30],{zone:'central',light:'circ',name:'Games and hobby room',off:'2200 Central · recreation',note:'Table tennis, board games, and a piano nobody remembers acquiring.',src:'Facility Codex §7',props:'games'});
+S('library','l2200',[12,22,22,30],{zone:'central',light:'circ',name:'Quiet room',off:'2200 Central · library',note:'Physical books, no screens, and an unwritten rule of silence that is enforced socially and absolutely.',scene:'Something human and unguarded',src:'Facility Codex §7',props:'library'});
+S('refuge22','l2200',[18,32,22,36],{zone:'central',h:2.6,light:'hard',name:'Refuge station',off:'2200 · mine refuge chamber',refuge:true,props:'refuge'});
+S('rescorr','l2200',[12,40,46,43],{zone:'res',h:2.6,kind:'corridor',ceil:'res',light:'res',name:'Residential',off:'Residential corridor',
+  note:'Deeper warm-sand floors, the softest surfaces anywhere in the facility, the lowest ceilings. Most staff commute. Some don’t. The gradient between “staying over during a push” and “living here” has no fixed point on it, and nobody has ever had a conversation about crossing it.',
+  interp:'The codex keeps Residential separate from Central but doesn’t fix its depth or position. Shown here on 2200, reached through Central.',src:'Facility Codex §10',props:'rescorr'});
+S('quarters','l2200',[28,34,34,40],{zone:'res',h:2.6,ceil:'res',light:'res',name:'Quarters',off:'Residential · single room',note:'Single rooms, hotel-scale, private bathroom, no windows and no pretence of them. Available to essentially any staff member for as long as they want, because space is not a constraint when you own a mine.',craft:'Charlotte has standing access to quarters below. Whether she goes up at the end of a bad day is characterisation, every single time, with no explanation required.',src:'Facility Codex §10',props:'quarters'});
+S('lounge','l2200',[12,43,24,53],{zone:'res',h:2.6,ceil:'sky',light:'res',name:'Common lounge',off:'Residential · common lounge',note:'Artificial sky, deep seating, the only genuinely comfortable furniture below grade.',src:'Facility Codex §3, §10',props:'lounge'});
+S('laundry','l2200',[26,43,32,49],{zone:'res',h:2.6,ceil:'res',light:'res',name:'Laundry',off:'Residential',note:'Laundry for the people who stay.',src:'Facility Codex §10',props:'laundry'});
+S('longstay','l2200',[34,43,44,53],{zone:'res',h:2.6,ceil:'res',light:'res',name:'Long-stay quarters',off:'Residential',note:'Larger, personalised, occupied by people who have stopped going up.',src:'Facility Codex §10',props:'longstay'});
+/* West */
+S('wconf1','l2200',[-44,-10,-38,-4],{zone:'west',name:'West Conference 1',off:'2200 West',note:'Research’s own meeting room.',src:'Facility Codex §8',props:'conf'});
+S('darton','l2200',[-54,-12,-44,-4],{zone:'west',name:'Darton’s office',off:'Head of Research · Peter Darton',
+  note:'Glass to the Analysis Floor, with a blind he rarely lowers. Books, paper, ink-stained everything, and a photograph of Charlotte from her early VORD years that he has never updated.',scene:'Charlotte and Darton',src:'Facility Codex §8',props:'darton'});
+S('analysis','l2200',[-84,-24,-54,-4],{zone:'west',h:3.6,name:'The Analysis Floor',off:'2200 West · data and modelling',note:'Open-plan data and modelling, screens along every wall, the most populated room in the wing.',
+  scene:'Charlotte working',scenes:'Ch2 Sc1 (screens, not machines)',src:'Facility Codex §8',props:'analysis'});
+S('wconf2','l2200',[-96,-10,-88,-4],{zone:'west',name:'West Conference 2',off:'2200 West',note:'Research’s second meeting room.',src:'Facility Codex §8',props:'conf'});
+S('threat','l2200',[-110,-16,-98,-4],{zone:'west',light:'threat',name:'Threat Assessment',off:'2200 West · recovered material, cold storage',note:'Analysis of what has been recovered from beyond the tunnels, with cold storage. The one room in West that nobody lingers in.',src:'Facility Codex §8',props:'threat'});
+S('west1','l2200',[-48,4,-40,14],{zone:'west',name:'West 1',off:'Tunnel Physics Laboratory',note:'Cleanroom instrumentation, benches, analysis stations. Research is the quietest wing: an instrumentation hum, no heavy machinery.',interp:'Room numbers are provisional.',src:'Facility Codex §8',props:'lab'});
+S('west2','l2200',[-60,4,-50,14],{zone:'west',name:'West 2',off:'Tunnel Physics Laboratory',note:'Cleanroom instrumentation, benches, analysis stations.',src:'Facility Codex §8',props:'lab'});
+S('west3','l2200',[-72,4,-62,14],{zone:'west',name:'West 3',off:'Tunnel Physics Laboratory · Charlotte’s lab',note:'Charlotte’s lab. Cleanroom instrumentation, benches, analysis stations.',
+  craft:'The permanent constraint on this wing: nobody here can publish, peer-review, or consult a single person outside the organisation. It should surface as pressure, never as complaint.',
+  scene:'Charlotte working',interp:'“West 3” is a provisional designation.',src:'Facility Codex §8',props:'lab'});
+S('charoff','l2200',[-72,14,-66,19],{zone:'west',h:2.8,name:'Charlotte’s office',off:'Off West 3',note:'A small room off West 3, away from the machines. “For the noise,” she tells herself, and told Darton.',scenes:'Ch1 Sc2 · Ch2 Sc1 (the override note in her logs)',src:'Facility Codex §8',props:'charoff'});
+S('west4','l2200',[-84,4,-74,14],{zone:'west',name:'West 4',off:'Tunnel Physics Laboratory',note:'Cleanroom instrumentation, benches, analysis stations.',src:'Facility Codex §8',props:'lab'});
+S('proto','l2200',[-100,4,-86,16],{zone:'west',name:'The Prototype Shop',off:'2200 West · clean machine shop',note:'A clean machine shop. One-offs only. HQ assembles and prototypes but cannot manufacture at scale; anything more takes weeks and five countries.',src:'Facility Codex §8, §9',props:'proto'});
+S('materials','l2200',[-114,4,-102,14],{zone:'west',name:'Materials Laboratory',off:'2200 West',note:'Shield and Weave development for the field suits.',src:'Facility Codex §8',props:'materials'});
+/* East */
+S('jenkins','l2200',[37,-10,43,-4],{zone:'east',light:'ops',name:'Jenkins’s office',off:'Head of Operations · Frank Jenkins',note:'Small, and he is almost never in it. He paces. Standing desk, no chair for visitors, and a map wall of the Station network he could pull up on a screen and doesn’t.',src:'Facility Codex §8',props:'jenkins'});
+S('opsfloor','l2200',[45,-26,77,-4],{zone:'east',h:7,light:'ops',name:'The Operations Floor',off:'2200 East · Command',view:{at:[46.6,-5.4],look:[64,-24],pitch:.1},
+  note:'The command centre. Tiered desks, wall displays, feeds arriving from Intel in Iceland and from the global Station network. Emergency Response Coordination runs from here in a crisis; it took the Disaster 1 comms from Akosombo Station. Never fully dark and never fully quiet.',
+  craft:'HQ is not a rapid-response base; the Stations are. Jenkins commands a global field force from the bottom of a shaft more than two kilometres deep, with a ten-minute cage ride. He is command, not launch.',
+  scene:'A crisis unfolding',src:'Facility Codex §8 · Capabilities Codex §4g',props:'opsfloor'});
+S('econf1','l2200',[79,-10,85,-4],{zone:'east',light:'ops',name:'East Conference 1',off:'2200 East',note:'Operations’ own meeting room.',src:'Facility Codex §8',props:'conf'});
+S('econf2','l2200',[86,-10,92,-4],{zone:'east',light:'ops',name:'East Conference 2',off:'2200 East',note:'Operations’ second meeting room.',src:'Facility Codex §8',props:'conf'});
+S('briefing','l2200',[94,-14,106,-4],{zone:'east',light:'ops',name:'Briefing and Staging',off:'2200 East · Preparation',note:'Pre-mission. Tables, screens, kit laid out.',scenes:'Ch2 Sc1 (Smith escorts Charlotte from here)',src:'Facility Codex §8',props:'briefing'});
+S('armoury','l2200',[108,-12,116,-4],{zone:'east',light:'ops',name:'The Armoury',off:'2200 East · Preparation',note:'Controlled access even within East.',src:'Facility Codex §8',props:'armoury'});
+S('suitbay','l2200',[38,4,52,16],{zone:'east',light:'ops',name:'The Suit Bay',off:'2200 East · Preparation',note:'Storage, fitting and maintenance of field suits. Racked, serialised, tracked. Some racks stay filled and are never reassigned.',craft:'Nobody explains why. Don’t explain it.',src:'Facility Codex §8',props:'suitbay'});
+S('trauma','l2200',[54,4,66,14],{zone:'east',light:'ops',name:'Trauma Medical',off:'2200 East · Medical',note:'Surgical capability, resuscitation, isolation. Sized for something considerably worse than a routine day.',src:'Facility Codex §8',props:'trauma'});
+S('opsgym','l2200',[68,4,80,16],{zone:'east',light:'ops',name:'Operations Gymnasium',off:'2200 East · Training',note:'Separate from the Central gym and considerably harder. Free weights, mats, a ring. Research staff technically may use it and effectively never do.',src:'Facility Codex §8',props:'opsgym'});
+const SIM_NOTE='Three reconfigurable, high-fidelity halls. They reproduce geometry and disorientation, total darkness, comms degradation, suit-clock pressure via spoofed HUD readouts, contact and casualty drills, breach procedure, and extraction under load. They cannot reproduce tunnel energy. Nothing can.';
+S('sim1','l2200',[82,4,92,24],{zone:'east',h:9,ceil:'dark',light:'sim',name:'Simulator Hall East 1',off:'2200 East · Training',note:SIM_NOTE,
+  craft:'An agent completes a flawless run knowing it proves nothing about the only thing that will actually kill them. There is a particular quality of silence at the end of a run that a new trainee notices and an experienced one doesn’t anymore. Where Venus trains.',
+  scene:'Venus training',src:'Facility Codex §9',props:'sim'});
+S('sim2','l2200',[93,4,103,24],{zone:'east',h:9,ceil:'dark',light:'sim',name:'Simulator Hall East 2',off:'2200 East · Training',note:SIM_NOTE,src:'Facility Codex §9',props:'sim'});
+S('sim3','l2200',[104,4,114,24],{zone:'east',h:9,ceil:'dark',light:'sim',name:'Simulator Hall East 3',off:'2200 East · Training',note:SIM_NOTE,src:'Facility Codex §9',props:'sim'});
+S('refugeE','l2200',[115,4,119,8],{zone:'east',h:2.6,light:'hard',name:'Refuge station',off:'2200 East · mine refuge chamber',refuge:true,props:'refuge'});
+S('training','l2200',[120,-14,144,14],{zone:'east',h:10,ceil:'high',light:'ops',name:'Training Modules',off:'2200 East · Training',pitch:.12,note:'Close-quarters house, rope and climbing structures, endurance circuit, casualty-drag course.',src:'Facility Codex §8',props:'training'});
+
+/* ---------- PLANT LEVEL ---------- */
+S('lobbyP','plant',[2,28,9,38],{zone:'plant',style:'industrial',h:3.2,ceil:'industrial',light:'plant',name:'Internal cage · Plant',off:'Plant Level · cage stop',cage:{x:5.5,z:36,shaft:'inner'},hole:[4,34,7,38],
+  note:'The cage stop for plant crew.',interp:'The codex names a Plant Level but not its depth. Shown here between 2200 and 2320.',src:'Facility Codex §9'});
+S('plantdrift','plant',[-42,24,52,28],{zone:'plant',style:'industrial',h:4.2,ceil:'industrial',kind:'corridor',light:'plant',name:'The Plant Level',off:'Refrigeration · air · water · power',
+  note:'Refrigeration, air handling, water treatment, power distribution. Loud, hot, industrial, and the least finished space below the seam. Almost nobody who isn’t plant crew has ever been down here.',
+  see:'The only place below the seam with exposed pipe, duct and cable. Everywhere else, nothing projects.',src:'Facility Codex §9',props:'plantdrift'});
+S('refrig','plant',[-42,0,-12,24],{zone:'plant',style:'industrial',h:10,ceil:'industrial',light:'plant',name:'The Refrigeration Plant',off:'Plant Level',pitch:.12,
+  note:'The true heart of the building, and its true vulnerability. It runs constantly. Lose it and the facility begins to cook, on a clock.',tellIds:['refrig'],
+  craft:'When the plant cycles down, the silence is wrong.',src:'Facility Codex §3, §9',props:'refrig'});
+S('ahu','plant',[-10,6,12,24],{zone:'plant',style:'industrial',h:8,ceil:'industrial',light:'plant',name:'Air Handling',off:'Plant Level',note:'Positive pressure for the whole facility starts here: the doors that sigh outward, the air with no scent. The constant thrum, felt more than heard.',tellIds:['ahu'],src:'Facility Codex §3, §4, §9',props:'ahu'});
+S('water','plant',[14,8,30,24],{zone:'plant',style:'industrial',h:7,ceil:'industrial',light:'plant',name:'Water Treatment',off:'Plant Level',note:'Water treatment for the facility.',src:'Facility Codex §9',props:'water'});
+S('power','plant',[32,10,52,24],{zone:'plant',style:'industrial',h:6,ceil:'industrial',light:'plant',name:'Power Distribution',off:'Plant Level',note:'Power distribution for everything below the seam.',tellIds:['power'],src:'Facility Codex §9, §11',props:'power'});
+S('servers','plant',[12,28,22,36],{zone:'east',style:'clean',h:3,light:'server',name:'Server rooms',off:'Local processing, storage, comms routing',
+  note:'Deliberately modest. Heavy compute means heavy heat, and heat is the one thing this facility cannot afford. The bulk of VORD’s computing lives in Iceland, where geothermal power and Arctic air make cooling effectively free. The two sites’ constraints explain each other.',
+  interp:'Placement on the Plant Level and graphite floor are this guide’s choices.',src:'Facility Codex §9 · Capabilities Codex §4e',props:'servers'});
+S('refugeP','plant',[-20,28,-16,32],{zone:'plant',style:'industrial',h:2.6,light:'hard',name:'Refuge station',off:'Plant Level · mine refuge chamber',refuge:true,props:'refuge'});
+
+/* ---------- 2320 ---------- */
+S('lobby23','l2320',[2,28,9,38],{zone:'deep',h:3.2,light:'deep',name:'Internal cage · 2320',off:'The cage stop Charlotte has never pressed',cage:{x:5.5,z:36,shaft:'inner'},hole:[4,34,7,38],
+  note:'Tier 1. A Tier 2 comes down only by summons, under escort. In Chapter 1 an Operations officer in security-pattern uniform presses the stop for Charlotte, rides down, and does not get out. She still never presses it herself.',
+  see:'She looks for her reflection in the floor out of habit and gets nothing back.',scenes:'Ch1 Sc1 (Charlotte’s meeting)',tellIds:['lobby23'],src:'Facility Codex §10 · Ch1 Sc1',caption:'A cage stop Charlotte has never pressed.'});
+S('deepcorr','l2320',[4,10,7,28],{zone:'deep',h:3,kind:'corridor',ceil:'deep',light:'deep',name:'2320',off:'Deep level corridor',note:'Lower light. Near-black matte floor.',interp:'Connecting corridor invented for this guide.'});
+S('deepmain','l2320',[-24,6,32,10],{zone:'deep',h:3,kind:'corridor',ceil:'deep',light:'deep',name:'2320',off:'The deep level · Tier 1',
+  note:'Six people cleared. Three of them on other continents. The hottest, most expensive, least occupied space in the facility, at about 48 °C of rock.',
+  see:'Near-black matte floors, the only zone that doesn’t gleam. Lower light. It feels older than everything above it, and it isn’t: it is exactly as new. The difference is entirely in how little it is used.',
+  scene:'Power, authority, cold',src:'Facility Codex §4, §10'});
+S('operator','l2320',[10,-8,24,6],{zone:'deep',h:3.2,ceil:'deep',light:'deep',name:'The Operator’s office',off:'Elena Voss',
+  note:'Elena Voss never sits with her back to a door, and the room is arranged accordingly, which reads as preference until you know her background. No window: blinds cover bare wall. The room is over-chilled, never un-cooled.',
+  see:'The door has no biometrics: the one door where a person decides who comes in.',scenes:'Ch1 Sc1 (the approval that becomes Disaster 1)',scene:'Power, authority, cold',src:'Facility Codex §10 · Ch1 Sc1 notes',props:'operator'});
+S('council','l2320',[-14,-8,4,6],{zone:'deep',h:3.2,ceil:'deep',light:'deep',name:'The Council Facility',off:'2320 · secure conference',note:'A secure conference room for the five heads, who mostly attend remotely. A physical table for six that has rarely held six.',src:'Facility Codex §10',props:'council'});
+S('archive','l2320',[-24,10,0,30],{zone:'deep',h:4,ceil:'deep',light:'deep',name:'The Archive',off:'2320 · institutional record',
+  note:'Centuries of institutional record, climate-controlled, physical. The founding record stayed at the original headquarters, so the Canadian archive holds everything VORD carried when it left, and nothing before.',
+  see:'The first shelf begins in the middle of an organisation that was already old. Even the Operator can stand here and be unable to read her own institution’s beginning.',
+  craft:'Never explain this on the page. Let someone notice, and move on.',src:'Facility Codex §10',props:'archive'});
+S('refuge23','l2320',[26,10,30,14],{zone:'deep',h:2.6,light:'hard',name:'Refuge station',off:'2320 · mine refuge chamber',refuge:true,props:'refuge'});
+
+const REFUGE_NOTE='Sealed chambers at intervals throughout every level, with independent air supply, water, rations and comms, rated to sustain occupants for about 36 hours. Legally mandatory in any working mine, so their presence requires no explanation whatsoever.';
+spaces.filter(s=>s.refuge).forEach(s=>Object.assign(s,{note:REFUGE_NOTE,see:'Marked, stocked, inspected, and never used.',craft:'A seamless facility with small rooms scattered through it designed for people to survive in when everything has gone wrong. Excellent for exactly one scene.',scene:'Everything has gone wrong',interp:'Positions are illustrative; the codex says only “at intervals throughout every level.”',src:'Facility Codex §9'}));
+
+/* ---------- CONNECTIONS ---------- */
+C('yard','change','door'); C('change','collar','door');
+C('station','drift','open'); C('drift','carwash','open',{at:-109}); C('drift','drys','door'); C('drys','issue','door'); C('issue','c2070','door');
+['brief','admin','mess70','chem','lowbg','refuge70','hallA','hallB','hallC'].forEach(id=>C('c2070',id,'door'));
+C('c2070','ladderRail','door',{at:-51}); ['rung1','rung2','rung3','rung4'].forEach(id=>C('ladderRail',id,'open'));
+C('c2070','svc','door'); C('svc','vest','seam'); C('vest','lobby70','door',{inner:true});
+C('lobby22','cagecorr','open'); C('spineC','cagecorr','open');
+C('spineW','spineC','open'); C('spineC','spineE','open');
+C('spineC','mess22','double'); C('spineC','fishbowl','glass',{at:-5}); C('spineC','conf2','door'); C('spineC','conf3','door'); C('spineC','garden','door',{at:25});
+C('spineC','transfer','double'); C('spineC','conf4','door'); C('spineC','conf5','door'); C('spineC','gym','door'); C('spineC','medical','door',{at:12});
+C('medical','beach','door'); C('medical','beach2','door'); C('spineC','southcorr','open');
+C('southcorr','common','door'); C('southcorr','games','door'); C('southcorr','library','door'); C('southcorr','refuge22','door'); C('southcorr','rescorr','open');
+C('rescorr','quarters','door'); C('rescorr','lounge','open',{at:18}); C('rescorr','laundry','door'); C('rescorr','longstay','door',{at:39});
+['wconf1','darton','wconf2','threat','west1','west2','west3','west4','proto','materials'].forEach(id=>C('spineW',id,'door'));
+C('spineW','analysis','double',{at:-62}); C('darton','analysis','glassnodoor'); C('west3','charoff','door',{at:-69});
+['jenkins','econf1','econf2','briefing','armoury','suitbay','trauma','opsgym','sim1','sim2','sim3','refugeE'].forEach(id=>C('spineE',id,'door'));
+C('spineE','opsfloor','double',{at:61}); C('spineE','training','open');
+C('lobbyP','plantdrift','open'); ['refrig','ahu','water','power'].forEach(id=>C('plantdrift',id,'double')); C('plantdrift','servers','door'); C('plantdrift','refugeP','door');
+C('lobby23','deepcorr','open'); C('deepmain','deepcorr','open'); C('deepmain','operator','door',{at:17}); C('deepmain','council','door',{at:-5}); C('deepmain','archive','door',{at:-12}); C('deepmain','refuge23','door');
+
+/* ---------- TOUR ---------- */
+const TOUR_ALL=['yard','change','collar','station','drift','carwash','drys','issue','c2070','brief','admin','mess70','chem','lowbg','ladderRail','rung2','hallA','hallB','hallC','refuge70','svc','vest','lobby70',
+ 'lobby22','cagecorr','spineC','fishbowl','mess22','conf2','garden','transfer','conf4','gym','medical','beach','southcorr','common','library','games','refuge22','rescorr','quarters','lounge','laundry','longstay',
+ 'spineW','darton','analysis','wconf1','west1','west2','west3','charoff','west4','proto','materials','threat','wconf2',
+ 'spineE','jenkins','opsfloor','econf1','briefing','armoury','suitbay','trauma','opsgym','sim1','training','refugeE',
+ 'lobbyP','plantdrift','refrig','ahu','water','power','servers','refugeP','lobby23','deepmain','operator','council','archive','refuge23'];
+const TOUR_KEY=['yard','change','collar','station','drift','drys','issue','c2070','brief','mess70','hallA','svc','vest','lobby70',
+ 'lobby22','spineC','fishbowl','mess22','garden','transfer','beach','library','rescorr','lounge',
+ 'spineW','darton','analysis','west3','charoff','threat','spineE','jenkins','opsfloor','suitbay','sim1',
+ 'lobbyP','refrig','servers','lobby23','deepmain','operator','council','archive'];
+
+/* =========================================================
+   RENDERER, SCENE
+   ========================================================= */
+const canvas=$('#gl');
+let renderer;
+try{ renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'}); }
+catch(e){ app.insertAdjacentHTML('beforeend','<div id="fail">This walkthrough needs WebGL, which this browser has turned off. The Index and Map tabs still work.</div>'); }
+if(!renderer) return;
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.75));
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1;
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(68,1,0.05,900);
+cam.rotation.order='YXZ';
+scene.add(cam);
+scene.fog=new THREE.Fog(0x888888,30,200);
+scene.background=new THREE.Color(0x101214);
+
+/* ---------- procedural textures ---------- */
+function rng(seed){ let a=seed>>>0||1; return ()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function tex(w,h,draw,{repeat=true,srgb=true}={}){
+  const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d'); draw(g,w,h);
+  const t=new THREE.CanvasTexture(c); t.userData={draw,c}; if(repeat){ t.wrapS=t.wrapT=THREE.RepeatWrapping; } if(srgb) t.encoding=THREE.sRGBEncoding; t.anisotropy=4; return t;
+}
+function speckle(g,w,h,base,n,cols,r){ const R=rng(n); g.fillStyle=base; g.fillRect(0,0,w,h); for(let i=0;i<n;i++){ g.fillStyle=cols[(R()*cols.length)|0]; const s=R()*r+0.5; g.globalAlpha=0.25+R()*0.5; g.fillRect(R()*w,R()*h,s,s);} g.globalAlpha=1; }
+const TX={};
+TX.rock=tex(256,256,(g,w,h)=>{ speckle(g,w,h,'#5b5249',9000,['#3e3731','#6d6358','#4a423b','#7b7064','#2f2a26'],3.2);
+  const R=rng(7); for(let i=0;i<40;i++){ g.strokeStyle='rgba(20,16,12,.35)'; g.lineWidth=1+R()*2; g.beginPath(); let x=R()*w,y=R()*h; g.moveTo(x,y); for(let k=0;k<4;k++){x+=(R()-.5)*50;y+=(R()-.5)*50;g.lineTo(x,y);} g.stroke(); }
+  g.strokeStyle='rgba(185,185,175,.38)'; g.lineWidth=1; for(let i=0;i<=w;i+=16){ g.beginPath(); g.moveTo(i,0); g.lineTo(i,h); g.stroke(); g.beginPath(); g.moveTo(0,i); g.lineTo(w,i); g.stroke(); }
+  for(let x=32;x<w;x+=96) for(let y=40;y<h;y+=96){ g.fillStyle='#8a8a84'; g.fillRect(x-7,y-7,14,14); g.fillStyle='#3a3a36'; g.beginPath(); g.arc(x,y,3,0,7); g.fill(); }
+});
+TX.gravel=tex(256,256,(g,w,h)=>speckle(g,w,h,'#4a4139',12000,['#2e2823','#665a4e','#3a332c','#7a6d5f'],2.6));
+TX.tile=tex(128,128,(g,w,h)=>{ g.fillStyle='#c9d0d1'; g.fillRect(0,0,w,h); g.strokeStyle='#8e9798'; g.lineWidth=2; for(let i=0;i<=w;i+=32){ g.beginPath(); g.moveTo(i,0); g.lineTo(i,h); g.stroke(); g.beginPath(); g.moveTo(0,i); g.lineTo(w,i); g.stroke(); } });
+TX.conc=tex(256,256,(g,w,h)=>{ speckle(g,w,h,'#77736c',7000,['#6a665f','#86827a','#5e5a54','#8f8b83'],2.2); g.strokeStyle='rgba(40,38,34,.35)'; g.lineWidth=1.5; g.strokeRect(0,0,w,h); });
+TX.corrug=tex(128,128,(g,w,h)=>{ for(let x=0;x<w;x+=8){ const gr=g.createLinearGradient(x,0,x+8,0); gr.addColorStop(0,'#8d9396'); gr.addColorStop(.5,'#b9bec0'); gr.addColorStop(1,'#7f8588'); g.fillStyle=gr; g.fillRect(x,0,8,h);} });
+TX.mesh=tex(128,128,(g,w,h)=>{ g.clearRect(0,0,w,h); g.strokeStyle='rgba(60,64,66,1)'; g.lineWidth=2.4; for(let i=0;i<=w;i+=12){ g.beginPath(); g.moveTo(i,0); g.lineTo(i,h); g.stroke(); g.beginPath(); g.moveTo(0,i); g.lineTo(w,i); g.stroke(); } });
+TX.papers=tex(512,256,(g,w,h)=>{ g.fillStyle='#efede8'; g.fillRect(0,0,w,h); const R=rng(3); for(let r=0;r<3;r++) for(let c=0;c<7;c++){ const x=14+c*71,y=14+r*80; g.fillStyle='#2b2b2b'; g.fillRect(x,y,56,70); g.fillStyle='#f8f6f0'; g.fillRect(x+4,y+4,48,62); g.fillStyle='#333'; g.fillRect(x+9,y+10,38,3); for(let l=0;l<9;l++){ g.fillStyle='rgba(60,60,60,.45)'; g.fillRect(x+9,y+18+l*5,20+R()*18,1.6);} } },{repeat:false});
+TX.board=tex(256,128,(g,w,h)=>{ g.fillStyle='#f6f7f5'; g.fillRect(0,0,w,h); const R=rng(11); const cols=['#2356a8','#1d1d1d','#b3261e','#1f7a3a']; for(let i=0;i<26;i++){ g.strokeStyle=cols[(R()*4)|0]; g.lineWidth=1.4; g.beginPath(); let x=10+R()*220,y=10+R()*100; g.moveTo(x,y); for(let k=0;k<5;k++){ x+=6+R()*14; y+=(R()-.5)*6; g.lineTo(x,y);} g.stroke(); } g.strokeStyle='#1d1d1d'; g.beginPath(); g.arc(180,70,22,0,5.5); g.stroke(); },{repeat:false});
+TX.books=tex(256,128,(g,w,h)=>{ const R=rng(21); const cols=['#6b2a2a','#2a3f6b','#3f5b35','#8a6a2e','#4a3b58','#a8a08a','#2c2c2c','#7a4a2a','#5a6e7a']; for(let row=0;row<4;row++){ let x=0; while(x<w){ const bw=4+R()*8; g.fillStyle=cols[(R()*cols.length)|0]; g.fillRect(x,row*32+4+R()*4,bw-1,28); x+=bw; } g.fillStyle='#3b2f25'; g.fillRect(0,row*32,w,3);} });
+TX.screen=tex(256,160,(g,w,h)=>{ g.fillStyle='#0c1a26'; g.fillRect(0,0,w,h); const R=rng(5); for(let i=0;i<22;i++){ g.fillStyle=`rgba(${120+R()*80|0},${170+R()*70|0},${220},.8)`; g.fillRect(10,8+i*6.8,30+R()*150,2.5);} g.strokeStyle='#5fb0e8'; g.beginPath(); g.moveTo(170,120); for(let x=170;x<246;x+=6) g.lineTo(x,80+Math.sin(x*.2)*20+R()*14); g.stroke(); },{repeat:false});
+TX.map=tex(1024,400,(g,w,h)=>{ g.fillStyle='#06121c'; g.fillRect(0,0,w,h); g.strokeStyle='rgba(90,150,200,.18)'; g.lineWidth=1; for(let x=0;x<w;x+=32){g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke();} for(let y=0;y<h;y+=32){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();}
+  const R=rng(9); g.fillStyle='rgba(120,170,210,.13)'; for(let i=0;i<2400;i++){ const x=R()*w,y=R()*h; const land=Math.sin(x*.012)+Math.cos(y*.02+x*.004)>0.35; if(land) g.fillRect(x,y,3,3); }
+  const pts=[[235,120,'HQ'],[462,70,'ICELAND'],[515,238,'AKOSOMBO'],[560,140,'VIENNA'],[640,190,'DUBAI'],[800,250,'SINGAPORE']]; for(let i=0;i<14;i++) pts.push([80+R()*880,70+R()*280,'']);
+  pts.forEach(p=>{ g.fillStyle=p[2]?'#ffcf7a':'#6fd0ff'; g.beginPath(); g.arc(p[0],p[1],p[2]?6:4,0,7); g.fill(); if(p[2]){ g.font='600 15px Martian Mono, monospace'; g.fillText(p[2],p[0]+10,p[1]+5);} });
+  g.strokeStyle='rgba(255,207,122,.45)'; g.beginPath(); g.moveTo(235,120); g.lineTo(515,238); g.moveTo(235,120); g.lineTo(462,70); g.stroke();
+  g.font='700 22px "Big Shoulders Display", sans-serif'; g.fillStyle='#9fc6e4'; g.fillText('STATION NETWORK · LIVE',18,32); },{repeat:false});
+TX.stencil=tex(256,512,(g,w,h)=>{ g.fillStyle='#7d8286'; g.fillRect(0,0,w,h); speckle(g,w,h,'rgba(0,0,0,0)',900,['#6f7478','#8a8f93'],2); g.fillStyle='#e8c53a'; g.beginPath(); g.moveTo(128,70); g.lineTo(178,160); g.lineTo(78,160); g.closePath(); g.fill(); g.fillStyle='#1b1b1b'; g.font='800 70px "Big Shoulders Display", Impact, sans-serif'; g.textAlign='center'; g.fillText('!',128,152);
+  g.font='800 44px "Big Shoulders Display", Impact, sans-serif'; g.fillStyle='#222'; g.fillText('ELECTRICAL',128,236); g.font='700 26px "Big Shoulders Display", Impact, sans-serif'; g.fillText('PLANT ACCESS',128,272); g.font='600 17px "Martian Mono", monospace'; g.fillText('AUTHORISED',128,316); g.fillText('PERSONNEL ONLY',128,338); g.fillText('2070-E',128,392); },{repeat:false});
+TX.refuge=tex(256,96,(g,w,h)=>{ g.fillStyle='#1d7a45'; g.fillRect(0,0,w,h); g.fillStyle='#fff'; g.font='800 40px "Big Shoulders Display", Impact, sans-serif'; g.textAlign='center'; g.fillText('REFUGE STATION',128,60); },{repeat:false});
+TX.blinds=tex(128,256,(g,w,h)=>{ for(let y=0;y<h;y+=8){ g.fillStyle='#b9b6ae'; g.fillRect(0,y,w,6); g.fillStyle='#8e8b84'; g.fillRect(0,y+6,w,2);} },{repeat:false});
+TX.archive=tex(256,128,(g,w,h)=>{ const R=rng(33); for(let row=0;row<4;row++){ let x=0; while(x<w){ const bw=14+R()*10; const v=150+R()*40|0; g.fillStyle=`rgb(${v},${v-14},${v-40})`; g.fillRect(x,row*32+5,bw-2,26); g.fillStyle='rgba(40,30,20,.5)'; g.fillRect(x+3,row*32+12,bw-8,3); x+=bw;} g.fillStyle='#2a2a2a'; g.fillRect(0,row*32,w,4);} });
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>['stencil','refuge','map'].forEach(k=>{ const u=TX[k].userData; u.draw(u.c.getContext('2d'),u.c.width,u.c.height); TX[k].needsUpdate=true; }));
+TX.rack=tex(64,256,(g,w,h)=>{ g.fillStyle='#15191c'; g.fillRect(0,0,w,h); for(let y=4;y<h;y+=10){ g.fillStyle='#232a2f'; g.fillRect(4,y,w-8,8); } });
+TX.leds=tex(64,256,(g,w,h)=>{ g.clearRect(0,0,w,h); const R=rng(44); for(let y=6;y<h;y+=10) for(let x=8;x<w-8;x+=8){ if(R()<.45){ g.fillStyle=R()<.8?'#37e07a':'#f5a623'; g.fillRect(x,y,3,3);} } });
+
+/* ---------- materials ---------- */
+const MAT={};
+function lam(name,color,o){ const m=new THREE.MeshLambertMaterial(Object.assign({color},o||{})); MAT[name]=m; return m; }
+function basic(name,color,o){ const m=new THREE.MeshBasicMaterial(Object.assign({color},o||{})); MAT[name]=m; return m; }
+function withUV(m,s){ m.userData.uvs=s; return m; }
+const DS=THREE.DoubleSide;
+// env map for glossy resin
+const envTex=(function(){ const t=tex(256,128,(g,w,h)=>{ const gr=g.createLinearGradient(0,0,0,h); gr.addColorStop(0,'#ffffff'); gr.addColorStop(.35,'#f2f1ec'); gr.addColorStop(.5,'#cfccc4'); gr.addColorStop(1,'#6a6760'); g.fillStyle=gr; g.fillRect(0,0,w,h); g.fillStyle='#fff'; for(let x=0;x<w;x+=32) g.fillRect(x+6,6,18,20); },{repeat:false}); t.mapping=THREE.EquirectangularReflectionMapping; const pm=new THREE.PMREMGenerator(renderer); const r=pm.fromEquirectangular(t).texture; pm.dispose(); return r; })();
+const FLOOR={};
+Object.keys(ZONES).forEach(z=>{
+  const c=ZONES[z].floor;
+  if(z==='mine'||z==='surface') FLOOR[z]=withUV(lam('f_'+z,0xffffff,{map:TX.gravel,side:DS}),3);
+  else if(z==='plant') FLOOR[z]=withUV(lam('f_'+z,0xffffff,{map:TX.conc,side:DS}),4);
+  else if(z==='drys') FLOOR[z]=withUV(new THREE.MeshStandardMaterial({color:0xffffff,map:TX.tile,roughness:.25,metalness:0,envMap:envTex,envMapIntensity:.5,side:DS}),1.2);
+  else if(z==='deep') FLOOR[z]=new THREE.MeshStandardMaterial({color:c,roughness:.97,metalness:0,side:DS});
+  else FLOOR[z]=new THREE.MeshStandardMaterial({color:c,roughness:z==='east'?.3:.17,metalness:0,envMap:envTex,envMapIntensity:z==='east'?.45:.7,side:DS});
+});
+lam('wall',0xEFEDE8,{side:DS}); lam('wallW',0xEDEFF0,{side:DS}); lam('wallE',0xD6D5D1,{side:DS}); lam('wallRes',0xEEE4D5,{side:DS}); lam('wallDeep',0x7A7874,{side:DS});
+lam('wallHard',0xB9BDC0,{side:DS}); lam('wallSvc',0xDCDCD7,{side:DS});
+withUV(lam('wallRock',0xffffff,{map:TX.rock,side:DS}),2.6); withUV(lam('wallTile',0xffffff,{map:TX.tile,side:DS}),1.2);
+withUV(lam('wallConc',0xffffff,{map:TX.conc,side:DS}),4); withUV(lam('wallMetal',0xffffff,{map:TX.corrug,side:DS}),1.4);
+lam('ceil',0xF4F3F0,{side:DS}); lam('ceilDeep',0x3f3e3c,{side:DS}); lam('ceilDark',0x0c0c0c,{side:DS}); lam('ceilRes',0xF1EAE0,{side:DS});
+const glassMat=new THREE.MeshStandardMaterial({color:0xcfe6ee,roughness:.05,metalness:.1,transparent:true,opacity:.16,envMap:envTex,envMapIntensity:1,side:DS,depthWrite:false}); MAT.glass=glassMat;
+const panelWork=basic('panelWork',0xffffff), panelCirc=basic('panelCirc',0xffffff), panelDeep=basic('panelDeep',0xffffff), panelRes=basic('panelRes',0xffffff), panelOps=basic('panelOps',0xffffff);
+basic('fluoro',0xE8F2FF); basic('bulb',0xFFC77A); basic('sodium',0xFFB45C); basic('beachPanel',0xFFFDF5); basic('grow',0xF4B8FF); basic('red',0xff3322); basic('ledG',0x37e07a);
+basic('screen',0xffffff,{map:TX.screen}); basic('mapWall',0xffffff,{map:TX.map}); basic('vend',0xbfe3ff); basic('timer',0xff9b3d);
+lam('papers',0xffffff,{map:TX.papers}); lam('board',0xffffff,{map:TX.board}); lam('books',0xffffff,{map:TX.books}); lam('stencil',0xffffff,{map:TX.stencil});
+basic('refugeSign',0xffffff,{map:TX.refuge}); lam('blinds',0xffffff,{map:TX.blinds}); lam('archiveBox',0xffffff,{map:TX.archive});
+lam('rack',0xffffff,{map:TX.rack}); basic('leds',0xffffff,{map:TX.leds,transparent:true});
+lam('meshWall',0xffffff,{map:TX.mesh,transparent:true,alphaTest:.35,side:DS});
+const PC={white:0xF2F2EF,steel:0x9DA3A8,dark:0x2A2D30,black:0x141516,wood:0x9A6B43,woodL:0xC49C6C,blue:0x3E5A78,grey:0x6B6E72,green:0x2f6b37,leaf:0x5DA04B,tomato:0xC8412E,yellow:0xD9A21B,copper:0xB8733D,lead:0x6A6E73,paper:0xF3EFE4,sofa:0x5B6770,rug:0x7a4f3a,orange:0xD9731F,poly:0xE9E6DE,navy:0x1f2a3a,cyl:0x2f7a4a,chill:0x3E6E95,pipeR:0xA23A2A,pipeG:0x3C7A4E,conc:0x8a867e,frost:0xD6E6F2,ring:0x9b2b24,mat:0x2c4a6b,cream:0xE8E0CF,olive:0x4a5238,pink:0xD98BB0};
+Object.keys(PC).forEach(k=>lam('p_'+k,PC[k]));
+
+/* sky shader for skylights and the surface dome */
+const skyUniforms={uTop:{value:new THREE.Color('#5d9bd8')},uBot:{value:new THREE.Color('#bcd8ef')},uSun:{value:new THREE.Color('#fff3d6')},uI:{value:1}};
+const skylightMat=new THREE.ShaderMaterial({uniforms:skyUniforms,side:DS,
+  vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader:'uniform vec3 uTop;uniform vec3 uBot;uniform vec3 uSun;uniform float uI;varying vec2 vUv;void main(){vec3 c=mix(uBot,uTop,smoothstep(0.,1.,length(vUv-vec2(.5,.2))*1.1));float d=distance(vUv,vec2(.74,.78));c+=uSun*(exp(-d*d*40.)*1.1+exp(-d*d*6.)*.18);gl_FragColor=vec4(c*uI,1.);}'});
+MAT.skylight=skylightMat;
+const domeUniforms={uTop:{value:new THREE.Color('#3a78c2')},uHor:{value:new THREE.Color('#bcd7ea')},uSunDir:{value:new THREE.Vector3(0,1,0)},uSunC:{value:new THREE.Color('#fff4de')},uStars:{value:0}};
+const domeMat=new THREE.ShaderMaterial({uniforms:domeUniforms,side:THREE.BackSide,depthWrite:false,fog:false,
+  vertexShader:'varying vec3 vD;void main(){vD=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader:'uniform vec3 uTop;uniform vec3 uHor;uniform vec3 uSunDir;uniform vec3 uSunC;uniform float uStars;varying vec3 vD;float h(vec3 p){return fract(sin(dot(p,vec3(12.9898,78.233,45.164)))*43758.5453);}void main(){float y=max(vD.y,0.);vec3 c=mix(uHor,uTop,pow(y,.55));float s=max(dot(vD,normalize(uSunDir)),0.);c+=uSunC*(pow(s,900.)*4.+pow(s,12.)*.25);vec3 q=floor(vD*260.);float st=step(.9975,h(q))*uStars*smoothstep(.05,.3,y);c+=vec3(st);if(vD.y<0.)c=mix(uHor*.6,uHor*.35,min(-vD.y*4.,1.));gl_FragColor=vec4(c,1.);}'});
+
+/* =========================================================
+   GEOMETRY BATCHING
+   ========================================================= */
+class Batch{
+  constructor(){ this.bins=new Map(); }
+  _b(m){ let b=this.bins.get(m); if(!b){ b={p:[],n:[],u:[]}; this.bins.set(m,b);} return b; }
+  quad(m,a,b,c,d,uv){
+    const B=this._b(m);
+    const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
+    let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1; nx/=l;ny/=l;nz/=l;
+    const P=[a,b,c,a,c,d]; let U;
+    if(uv){ U=[uv[0],uv[1],uv[2],uv[0],uv[2],uv[3]]; }
+    else { const sc=m.userData.uvs||2, ax=Math.abs(nx),ay=Math.abs(ny),az=Math.abs(nz);
+      U=P.map(p=> ax>=ay&&ax>=az?[p[2]/sc,p[1]/sc]: ay>=az?[p[0]/sc,p[2]/sc]:[p[0]/sc,p[1]/sc]); }
+    for(let i=0;i<6;i++){ B.p.push(P[i][0],P[i][1],P[i][2]); B.n.push(nx,ny,nz); B.u.push(U[i][0],U[i][1]); }
+  }
+  box(m,cx,y0,cz,sx,sy,sz,ry){
+    ry=ry||0; const hx=sx/2,hz=sz/2,y1=y0+sy,c=Math.cos(ry),s=Math.sin(ry);
+    const P=(x,y,z)=>[cx+x*c+z*s,y,cz-x*s+z*c];
+    const X0=-hx,X1=hx,Z0=-hz,Z1=hz;
+    this.quad(m,P(X1,y0,Z1),P(X1,y0,Z0),P(X1,y1,Z0),P(X1,y1,Z1));
+    this.quad(m,P(X0,y0,Z0),P(X0,y0,Z1),P(X0,y1,Z1),P(X0,y1,Z0));
+    this.quad(m,P(X0,y1,Z1),P(X1,y1,Z1),P(X1,y1,Z0),P(X0,y1,Z0));
+    this.quad(m,P(X0,y0,Z0),P(X1,y0,Z0),P(X1,y0,Z1),P(X0,y0,Z1));
+    this.quad(m,P(X0,y0,Z1),P(X1,y0,Z1),P(X1,y1,Z1),P(X0,y1,Z1));
+    this.quad(m,P(X1,y0,Z0),P(X0,y0,Z0),P(X0,y1,Z0),P(X1,y1,Z0));
+  }
+  build(parent){
+    this.bins.forEach((b,m)=>{ if(!b.p.length) return; const g=new THREE.BufferGeometry();
+      g.setAttribute('position',new THREE.Float32BufferAttribute(b.p,3)); g.setAttribute('normal',new THREE.Float32BufferAttribute(b.n,3)); g.setAttribute('uv',new THREE.Float32BufferAttribute(b.u,2));
+      g.computeBoundingSphere(); const mesh=new THREE.Mesh(g,m); mesh.matrixAutoUpdate=false; mesh.updateMatrix(); parent.add(mesh); });
+    this.bins.clear();
+  }
+}
+const G={}, BT={};
+LV_ORDER.forEach(lv=>{ G[lv]=new THREE.Group(); G[lv].name=lv; scene.add(G[lv]); BT[lv]=new Batch(); });
+const Gshaft=new THREE.Group(); scene.add(Gshaft); const Bshaft=new Batch();
+
+/* noise for rock */
+function hash3(x,y,z){ const h=Math.sin(x*127.1+y*311.7+z*74.7)*43758.5453; return h-Math.floor(h); }
+function vnoise(x,y,z){ const xi=Math.floor(x),yi=Math.floor(y),zi=Math.floor(z); const xf=x-xi,yf=y-yi,zf=z-zi; const u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf),w=zf*zf*(3-2*zf);
+  const L=(a,b,t)=>a+(b-a)*t; const c=(i,j,k)=>hash3(xi+i,yi+j,zi+k);
+  return L(L(L(c(0,0,0),c(1,0,0),u),L(c(0,1,0),c(1,1,0),u),v),L(L(c(0,0,1),c(1,0,1),u),L(c(0,1,1),c(1,1,1),u),v),w); }
+function rockN(x,y,z){ return vnoise(x*.6,y*.6,z*.6)*.65+vnoise(x*1.7,y*1.7,z*1.7)*.35; }
+const sstep=(e0,e1,x)=>{ const t=Math.min(1,Math.max(0,(x-e0)/(e1-e0))); return t*t*(3-2*t); };
+
+/* ---------- resolve connections into wall gaps and nav points ---------- */
+const near=(a,b)=>Math.abs(a-b)<1e-3;
+conns.forEach(c=>{
+  const A=byId[c.a],B=byId[c.b]; let lo,hi;
+  if(!A||!B){ console.warn('bad conn',c); return; }
+  if(near(A.x1,B.x0)){ c.sideA='E';c.sideB='W';c.edge=A.x1;c.axis='x';lo=Math.max(A.z0,B.z0);hi=Math.min(A.z1,B.z1);c.nA=[-1,0]; }
+  else if(near(A.x0,B.x1)){ c.sideA='W';c.sideB='E';c.edge=A.x0;c.axis='x';lo=Math.max(A.z0,B.z0);hi=Math.min(A.z1,B.z1);c.nA=[1,0]; }
+  else if(near(A.z1,B.z0)){ c.sideA='S';c.sideB='N';c.edge=A.z1;c.axis='z';lo=Math.max(A.x0,B.x0);hi=Math.min(A.x1,B.x1);c.nA=[0,-1]; }
+  else if(near(A.z0,B.z1)){ c.sideA='N';c.sideB='S';c.edge=A.z0;c.axis='z';lo=Math.max(A.x0,B.x0);hi=Math.min(A.x1,B.x1);c.nA=[0,1]; }
+  else { console.warn('not adjacent',c.a,c.b); c.bad=true; return; }
+  const gh=Math.min(A.h,B.h), mid=c.at!=null?c.at:(lo+hi)/2;
+  const glass=c.type==='glass'||c.type==='glassnodoor';
+  const w=c.type==='open'?hi-lo:c.type==='double'?2.4:1.3;
+  c.lo=glass?lo:Math.max(lo,mid-w/2); c.hi=glass?hi:Math.min(hi,mid+w/2); c.mid=mid;
+  c.gh=c.type==='open'||glass?gh:Math.min(2.25,gh-0.2);
+  c.dlo=mid-0.65; c.dhi=mid+0.65; c.passable=c.type!=='glassnodoor'; c.glass=glass;
+  c.center=c.axis==='x'?[c.edge,mid]:[mid,c.edge];
+  c.pA=[c.center[0]+c.nA[0]*.9,c.center[1]+c.nA[1]*.9]; c.pB=[c.center[0]-c.nA[0]*.9,c.center[1]-c.nA[1]*.9];
+  A.gaps.push({side:c.sideA,lo:c.lo,hi:c.hi,gh:c.gh,glass,owner:A,conn:c});
+  B.gaps.push({side:c.sideB,lo:c.lo,hi:c.hi,gh:c.gh,glass,owner:A,conn:c});
+});
+
+function sideInfo(s,side){
+  switch(side){
+    case 'N':return{along:'x',a0:s.x0,a1:s.x1,edge:s.z0,n:[0,0,1]};
+    case 'S':return{along:'x',a0:s.x0,a1:s.x1,edge:s.z1,n:[0,0,-1]};
+    case 'W':return{along:'z',a0:s.z0,a1:s.z1,edge:s.x0,n:[1,0,0]};
+    default:return{along:'z',a0:s.z0,a1:s.z1,edge:s.x1,n:[-1,0,0]};
+  }
+}
+function wp(si,a,Y,off){ const e=si.edge+(si.n[0]+si.n[2])*off; return si.along==='x'?[a,Y,e]:[e,Y,a]; }
+const RESIN_ZONES={w2070:1,central:1,west:1,east:1,res:1,deep:1,hard:1};
+function wallMat(s){
+  switch(s.style){
+    case 'rock':return MAT.wallRock; case 'tile':return MAT.wallTile; case 'metal':return MAT.wallMetal; case 'industrial':return MAT.wallConc;
+    case 'hard':return MAT.wallHard; case 'service':return MAT.wallSvc;
+  }
+  if(s.zone==='west') return MAT.wallW; if(s.zone==='east') return MAT.wallE; if(s.zone==='res') return MAT.wallRes; if(s.zone==='deep') return MAT.wallDeep;
+  return MAT.wall;
+}
+function rectMinusHole(x0,z0,x1,z1,h){
+  if(!h) return [[x0,z0,x1,z1]];
+  return [[x0,z0,x1,h[1]],[x0,h[3],x1,z1],[x0,h[1],h[0],h[3]],[h[2],h[1],x1,h[3]]].filter(r=>r[2]-r[0]>0.01&&r[3]-r[1]>0.01);
+}
+function hquad(B,m,x0,z0,x1,z1,y){ B.quad(m,[x0,y,z1],[x1,y,z1],[x1,y,z0],[x0,y,z0]); }
+
+function rockSurface(B,m,corner,du,dv,nu,nv,normal,amp,taperU,taperV,arch){
+  // corner + u*du + v*dv, displaced along normal by noise
+  const P=(i,j)=>{ const u=i/nu,v=j/nv; const p=[corner[0]+du[0]*u+dv[0]*v,corner[1]+du[1]*u+dv[1]*v,corner[2]+du[2]*u+dv[2]*v];
+    let t=1; if(taperU) t*=sstep(0,.12,u)*sstep(0,.12,1-u); if(taperV) t*=sstep(0,.15,v)*sstep(0,.15,1-v);
+    let d=(rockN(p[0],p[1],p[2])-.5)*amp*t; if(arch) d+=arch*(1-Math.pow(2*v-1,2));
+    return [p[0]+normal[0]*d,p[1]+normal[1]*d,p[2]+normal[2]*d]; };
+  for(let i=0;i<nu;i++) for(let j=0;j<nv;j++) B.quad(m,P(i,j),P(i+1,j),P(i+1,j+1),P(i,j+1));
+}
+
+function wallSeg(s,si,a0,a1,y0,y1){
+  const B=BT[s.lv], m=wallMat(s), Y=s.y;
+  if(s.style==='rock'){
+    const c=wp(si,a0,Y+y0,T), e=wp(si,a1,Y+y0,T); const du=[e[0]-c[0],0,e[2]-c[2]], dv=[0,y1-y0,0];
+    rockSurface(B,m,c,du,dv,Math.max(1,Math.ceil((a1-a0)/.9)),Math.max(1,Math.ceil((y1-y0)/.9)),[-si.n[0],0,-si.n[2]],.9,true,y0===0,0);
+    return;
+  }
+  const resin=RESIN_ZONES[s.zone]&&(s.style==='clean'||s.style==='service'||s.style==='hard');
+  if(resin&&y0===0){
+    const fm=FLOOR[s.zone];
+    B.quad(fm,wp(si,a0,Y,T+.16),wp(si,a1,Y,T+.16),wp(si,a1,Y+.16,T),wp(si,a0,Y+.16,T));
+    B.quad(fm,wp(si,a0,Y+.16,T),wp(si,a1,Y+.16,T),wp(si,a1,Y+.48,T),wp(si,a0,Y+.48,T));
+    y0=.48;
+  }
+  if(y1-y0>0.005) B.quad(m,wp(si,a0,Y+y0,T),wp(si,a1,Y+y0,T),wp(si,a1,Y+y1,T),wp(si,a0,Y+y1,T));
+}
+function jambs(s,si,g){
+  const B=BT[s.lv], m=wallMat(s), Y=s.y;
+  for(const a of [g.lo,g.hi]){ if(a<=si.a0+1e-3||a>=si.a1-1e-3) continue; B.quad(m,wp(si,a,Y,0),wp(si,a,Y,T),wp(si,a,Y+g.gh,T),wp(si,a,Y+g.gh,0)); }
+  if(s.h>g.gh+.01) B.quad(m,wp(si,g.lo,Y+g.gh,0),wp(si,g.hi,Y+g.gh,0),wp(si,g.hi,Y+g.gh,T),wp(si,g.lo,Y+g.gh,T));
+}
+function glassPane(s,si,g){
+  const B=BT[s.lv], Y=s.y, c=g.conn;
+  const pieces=c.type==='glass'?[[g.lo,c.dlo,0,g.gh],[c.dhi,g.hi,0,g.gh],[c.dlo,c.dhi,2.25,g.gh]]:[[g.lo,g.hi,0,g.gh]];
+  pieces.forEach(p=>{ if(p[1]-p[0]<.01||p[3]-p[2]<.01) return; B.quad(MAT.glass,wp(si,p[0],Y+p[2],0),wp(si,p[1],Y+p[2],0),wp(si,p[1],Y+p[3],0),wp(si,p[0],Y+p[3],0)); });
+  for(let a=g.lo;a<=g.hi+1e-3;a+=1.5){ const p=wp(si,a,Y,0); B.box(MAT.p_dark,p[0],Y,p[2],.05,g.gh,.05); }
+  const p0=wp(si,(g.lo+g.hi)/2,Y,0); B.box(MAT.p_dark,p0[0],Y+g.gh-.06,p0[2],si.along==='x'?g.hi-g.lo:.06,.06,si.along==='x'?.06:g.hi-g.lo);
+}
+function wallRun(s,side){
+  const si=sideInfo(s,side);
+  const gaps=s.gaps.filter(g=>g.side===side).sort((a,b)=>a.lo-b.lo);
+  let a=si.a0;
+  for(const g of gaps){
+    if(g.lo-a>.005) wallSeg(s,si,a,g.lo,0,s.h);
+    if(s.h>g.gh+.01) wallSeg(s,si,g.lo,g.hi,g.gh,s.h);
+    if(g.glass){ if(g.owner===s) glassPane(s,si,g); } else if(s.style!=='rock') jambs(s,si,g);
+    a=Math.max(a,g.hi);
+  }
+  if(si.a1-a>.005) wallSeg(s,si,a,si.a1,0,s.h);
+}
+
+/* ceilings */
+function panelMatFor(s){ if(s.light==='deep') return panelDeep; if(s.light==='res') return panelRes; if(s.light==='ops') return panelOps; if(s.light==='circ') return panelCirc; if(s.light==='drys'||s.light==='hard') return MAT.fluoro; return panelWork; }
+function buildCeiling(s){
+  const B=BT[s.lv], Yc=s.y+s.h;
+  if(s.ceil==='none') return;
+  const rects=rectMinusHole(s.x0,s.z0,s.x1,s.z1,s.hole);
+  if(s.ceil==='rock'){
+    const w=s.x1-s.x0,d=s.z1-s.z0, alongX=w>=d;
+    rects.forEach(r=>{ const rw=r[2]-r[0], rd=r[3]-r[1];
+      if(alongX) rockSurface(B,MAT.wallRock,[r[0],Yc,r[1]],[rw,0,0],[0,0,rd],Math.ceil(rw/.9),Math.max(2,Math.ceil(rd/.9)),[0,1,0],.8,false,true,Math.min(1.1,rd*.2));
+      else rockSurface(B,MAT.wallRock,[r[0],Yc,r[1]],[0,0,rd],[rw,0,0],Math.ceil(rd/.9),Math.max(2,Math.ceil(rw/.9)),[0,1,0],.8,false,true,Math.min(1.1,rw*.2));
+    });
+    return;
+  }
+  let cm=MAT.ceil;
+  if(s.style==='industrial') cm=MAT.wallConc; else if(s.style==='metal') cm=MAT.wallMetal; else if(s.style==='tile') cm=MAT.ceil;
+  if(s.ceil==='deep') cm=MAT.ceilDeep; if(s.ceil==='dark') cm=MAT.ceilDark; if(s.ceil==='res') cm=MAT.ceilRes;
+  if(s.zone==='deep') cm=MAT.ceilDeep;
+  rects.forEach(r=>hquad(B,cm,r[0],r[1],r[2],r[3],Yc));
+  const w=s.x1-s.x0,d=s.z1-s.z0;
+  if(s.ceil==='sky'){
+    const alongX=w>=d, L=alongX?w:d, Wd=alongX?d:w, n=Math.max(1,Math.floor(L/6.5)), pl=Math.min(3.6,L/n-1.4), pw=Math.min(3,Wd-1.6);
+    for(let i=0;i<n;i++){ const t=(i+.5)/n; const cx=alongX?s.x0+t*w:s.cx, cz=alongX?s.cz:s.z0+t*d; const hx=(alongX?pl:pw)/2, hz=(alongX?pw:pl)/2;
+      const x0=cx-hx,x1=cx+hx,z0=cz-hz,z1=cz+hz,y0=Yc-.01,y1=Yc+.42;
+      B.quad(MAT.ceil,[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0]); B.quad(MAT.ceil,[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]);
+      B.quad(MAT.ceil,[x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0]); B.quad(MAT.ceil,[x1,y0,z0],[x1,y0,z1],[x1,y1,z1],[x1,y1,z0]);
+      B.quad(skylightMat,[x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[x0,y1,z0],alongX?[[0,0],[1,0],[1,1],[0,1]]:[[0,1],[0,0],[1,0],[1,1]]);
+      // cut the ceiling hole visually with a thin dark frame
+      B.box(MAT.p_white,cx,Yc-.03,z0,hx*2+.1,.03,.05); B.box(MAT.p_white,cx,Yc-.03,z1,hx*2+.1,.03,.05);
+    }
+    return;
+  }
+  if(s.ceil==='beach'){ return; }
+  const pm=panelMatFor(s);
+  if(s.ceil==='high'){ for(let x=s.x0+2.5;x<s.x1-1;x+=5) for(let z=s.z0+2.5;z<s.z1-1;z+=5) hquad(B,pm,x-.45,z-.45,x+.45,z+.45,Yc-.02); return; }
+  if(s.ceil==='industrial'){ const sm=MAT.sodium; for(let x=s.x0+2;x<s.x1-.5;x+=4.5) for(let z=s.z0+1.5;z<s.z1-.5;z+=Math.max(3,(d-1)/Math.max(1,Math.round(d/5)))) B.box(sm,x,Yc-.25,z,1.1,.12,.35); return; }
+  if(s.ceil==='dark') return;
+  if(s.ceil==='res'||s.ceil==='deep'){ const step=s.ceil==='deep'?4.2:2.6; for(let x=s.x0+step/2;x<s.x1;x+=step) for(let z=s.z0+Math.min(step/2,d/2);z<s.z1;z+=step) hquad(B,pm,x-.18,z-.18,x+.18,z+.18,Yc-.015); return; }
+  // flush panels
+  if(Math.min(w,d)<4.5){ const alongX=w>=d; const L=alongX?w:d; for(let t=1.6;t<L-.6;t+=3.2){ if(alongX) hquad(B,pm,s.x0+t-.6,s.cz-.3,s.x0+t+.6,s.cz+.3,Yc-.015); else hquad(B,pm,s.cx-.3,s.z0+t-.6,s.cx+.3,s.z0+t+.6,Yc-.015);} return; }
+  for(let x=s.x0+1.6;x<s.x1-.6;x+=3.2) for(let z=s.z0+1.6;z<s.z1-.6;z+=3.2) hquad(B,pm,x-.6,z-.3,x+.6,z+.3,Yc-.015);
+}
+function buildFloor(s){
+  const B=BT[s.lv];
+  const rects=rectMinusHole(s.x0,s.z0,s.x1,s.z1,s.hole);
+  if(s.floorSplit){ const fx=s.floorSplit.x; hquad(B,FLOOR[s.floorSplit.zone],s.x0,s.z0,fx,s.z1,s.y); hquad(B,FLOOR[s.zone],fx,s.z0,s.x1,s.z1,s.y); return; }
+  if(s.style==='none'){ return; }
+  rects.forEach(r=>hquad(B,FLOOR[s.zone],r[0],r[1],r[2],r[3],s.y));
+}
+spaces.forEach(s=>{ buildFloor(s); buildCeiling(s); if(s.style!=='none') ['N','S','W','E'].forEach(sd=>wallRun(s,sd)); });
+
+/* ---------- doors ---------- */
+const doors=[];
+function doorMatFor(c){
+  const A=byId[c.a],B=byId[c.b];
+  if(c.type==='seam') return MAT.stencil;
+  if(c.type==='glass') return MAT.glass;
+  if(A.refuge||B.refuge) return MAT.p_steel;
+  if(A.style==='metal'||A.style==='industrial'||B.style==='industrial'||B.style==='tile'||A.style==='tile') return MAT.p_steel;
+  if(B.id==='armoury') return MAT.p_dark;
+  const z=B.zone;
+  if(z==='east') return lam('door_e',0xC5C4C0); if(z==='deep') return lam('door_d',0x5b5956); if(z==='res') return lam('door_r',0xE2D6C4); if(z==='west') return lam('door_w',0xDDE1E4);
+  return lam('door_c',0xE1DFD9);
+}
+conns.forEach(c=>{
+  if(c.bad||c.type==='open'||c.type==='glassnodoor') return;
+  const A=byId[c.a], Y=A.y, gh=c.type==='glass'?2.25:c.gh;
+  const lo=c.type==='glass'?c.dlo:c.lo, hi=c.type==='glass'?c.dhi:c.hi;
+  const along=c.axis==='x'?'z':'x';
+  const leaves=c.type==='double'?[[lo,(hi-lo)/2,1],[hi,(hi-lo)/2,-1]]:[[lo,hi-lo,1]];
+  const th=c.type==='seam'?.14:.05, m=doorMatFor(c), rec={pivots:[],x:c.center[0],z:c.center[1],y:Y,open:0,target:0,conn:c,speed:c.type==='seam'||c.inner?1.6:2.6};
+  leaves.forEach(([h,w,dir])=>{
+    const piv=new THREE.Group(); const geo=along==='x'?new THREE.BoxGeometry(w,gh,th):new THREE.BoxGeometry(th,gh,w);
+    const mesh=new THREE.Mesh(geo,m); if(along==='x'){ piv.position.set(h,Y,c.edge); mesh.position.set(dir*w/2,gh/2,0);} else { piv.position.set(c.edge,Y,h); mesh.position.set(0,gh/2,dir*w/2); }
+    piv.add(mesh); G[A.lv].add(piv);
+    const v0=along==='x'?[dir,0]:[0,dir]; const rp=[v0[1],-v0[0]]; // R(+pi/2)(x,z)=(z,-x)
+    const ang=(Math.abs(rp[0]-c.nA[0])<1e-3&&Math.abs(rp[1]-c.nA[1])<1e-3)?Math.PI/2:-Math.PI/2;
+    rec.pivots.push({g:piv,ang});
+    if(c.type==='seam'){ const f=along==='x'?[w+.5,.18,.3]:[.3,.18,w+.5]; const fm=new THREE.Mesh(new THREE.BoxGeometry(f[0],f[1],f[2]),MAT.p_dark); fm.position.set(c.center[0],Y+gh+.09,c.center[1]); G[A.lv].add(fm); }
+  });
+  doors.push(rec); c.door=rec;
+  if(A.refuge||byId[c.b].refuge){ const R=A.refuge?A:byId[c.b], O=A.refuge?byId[c.b]:A; const si=sideInfo(O,A.refuge?c.sideB:c.sideA); const p=wp(si,c.mid,O.y+gh+.12,T+.01);
+    const sw=along==='x'; BT[O.lv].quad(MAT.refugeSign, sw?[c.mid-.7,p[1],p[2]]:[p[0],p[1],c.mid-.7], sw?[c.mid+.7,p[1],p[2]]:[p[0],p[1],c.mid+.7], sw?[c.mid+.7,p[1]+.5,p[2]]:[p[0],p[1]+.5,c.mid+.7], sw?[c.mid-.7,p[1]+.5,p[2]]:[p[0],p[1]+.5,c.mid-.7], (si.n[2]<0||si.n[0]>0)?[[1,0],[0,0],[0,1],[1,1]]:[[0,0],[1,0],[1,1],[0,1]]); }
+});
+
+/* =========================================================
+   PROPS
+   ========================================================= */
+const spinners=[], steamSystems=[], bulbs={}; LV_ORDER.forEach(l=>bulbs[l]=[]);
+function kit(s){
+  const B=BT[s.lv], Y=s.y;
+  const bx=(m,x,z,sx,sy,sz,y,ry)=>B.box(m,x,Y+(y||0),z,sx,sy,sz,ry||0);
+  const dec=(side,a0,a1,y0,y1,m,off)=>{ const si=sideInfo(s,side); off=off==null?T+.015:off; const swap=side==='S'||side==='W';
+    B.quad(m,wp(si,a0,Y+y0,off),wp(si,a1,Y+y0,off),wp(si,a1,Y+y1,off),wp(si,a0,Y+y1,off),swap?[[1,0],[0,0],[0,1],[1,1]]:[[0,0],[1,0],[1,1],[0,1]]); };
+  const cyl=(m,x,z,r,h,y,rx,rz,seg)=>{ const me=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg||16),m); me.position.set(x,Y+(y||0)+(rx||rz?0:h/2),z); if(rx) me.rotation.x=rx; if(rz) me.rotation.z=rz; G[s.lv].add(me); return me; };
+  const desk=(x,z,ry,mon)=>{ bx(MAT.p_white,x,z,1.5,.04,.75,.72,ry); bx(MAT.p_steel,x,z,1.4,.7,.05,0,ry); if(mon!==false){ const dx=Math.sin(ry)*-.2, dz=Math.cos(ry)*-.2; bx(MAT.p_black,x+dx,z+dz,.62,.38,.04,.9,ry); bx(MAT.screen,x+dx+Math.sin(ry)*.025,z+dz+Math.cos(ry)*.025,.56,.32,.005,.93,ry);} };
+  const chair=(x,z,ry,m)=>{ bx(m||MAT.p_dark,x,z,.46,.08,.46,.44,ry); bx(m||MAT.p_dark,x-Math.sin(ry)*.2,z-Math.cos(ry)*.2,.46,.5,.06,.5,ry); bx(MAT.p_steel,x,z,.06,.44,.06,0,ry); };
+  const table=(x,z,w,d,m,h)=>{ bx(m||MAT.p_white,x,z,w,.05,d,(h||.74)-.05); [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([i,j])=>bx(MAT.p_steel,x+i*(w/2-.08),z+j*(d/2-.08),.05,(h||.74)-.05,.05)); };
+  const shelf=(x,z,w,d,h,ry,m,face)=>{ bx(m||MAT.p_steel,x,z,w,h,d,0,ry); if(face){ const fx=x+Math.sin(ry)*(d/2+.005), fz=z+Math.cos(ry)*(d/2+.005); bx(face,fx,fz,w-.06,h-.1,.01,.05,ry);} };
+  return {B,Y,bx,dec,cyl,desk,chair,table,shelf,s};
+}
+const PROPS={
+  change(k){ const {s,bx,shelf}=k; for(let x=s.x0+.6;x<s.x1-.4;x+=.62) shelf(x,s.z0+.35,.6,.5,1.9,0,MAT.p_steel); bx(MAT.p_wood,s.cx,s.cz,6,.45,.4); for(let x=s.x0+1;x<s.x1-1;x+=1.1){ bx(MAT.p_yellow,x,s.z1-.25,.28,.16,.3,1.55); bx(MAT.p_orange,x,s.z1-.2,.4,.9,.12,.6);} },
+  collar(k){ const {s,bx}=k; bx(MAT.p_yellow,s.x0+.3,s.z0+1,.12,.5,.3,1.3); bx(MAT.p_dark,s.x0+.25,s.z0+1,.1,.25,.2,1.45); },
+  mine(k){ const {s,Y,cyl}=k; const L=s.x1-s.x0; const duct=cyl(MAT.p_yellow,s.cx,s.z0+.9,.38,L,s.h-.8,0,Math.PI/2,12); duct.position.y=Y+s.h-.7;
+    for(let x=s.x0+3;x<s.x1;x+=7){ bulbs[s.lv].push([x,Y+s.h-.35,s.z1-.8]); const b=new THREE.Mesh(new THREE.SphereGeometry(.09,8,6),MAT.bulb); b.position.set(x,Y+s.h-.35,s.z1-.8); G[s.lv].add(b); }
+    k.bx(MAT.p_steel,s.cx,s.z1-.8,L,.03,.03,s.h-.3); [-.55,.55].forEach(o=>k.bx(MAT.p_steel,s.cx,s.cz+o+.2,L,.06,.08,0)); },
+  carwash(k){ const {s,bx}=k; for(const z of [s.z0+1.5,s.z1-1.5]){ bx(MAT.p_steel,s.x0+1,z,.15,3.6,.15); bx(MAT.p_steel,s.x1-1,z,.15,3.6,.15); bx(MAT.p_steel,s.cx,z,s.x1-s.x0-2,.15,.15,3.5);} bx(MAT.p_orange,s.cx,s.cz,3.4,1.6,1.9,.3); bx(MAT.p_black,s.cx,s.cz,3.6,.3,2,0); },
+  drys(k){ const {s,bx,shelf}=k; for(let z=s.z0+.5;z<s.z1-.3;z+=.62) shelf(s.x0+.3,z,.5,.6,1.9,Math.PI/2,MAT.p_steel);
+    for(let x=s.x0+3;x<s.x1-1;x+=1.6){ bx(MAT.p_white,x,s.z0+1,.06,2.1,2); bx(MAT.p_steel,x+.8,s.z0+.15,.1,.1,.25,2.2); }
+    bx(MAT.p_wood,s.cx+1,s.cz+1,5,.45,.45); bx(MAT.p_steel,s.cx,s.z1-.6,4,.5,.8); steamSystems.push(makeSteam(s)); },
+  issue(k){ const {s,bx}=k; bx(MAT.p_white,s.x0+1.2,s.z0+.5,2.2,1,.7); for(let i=0;i<5;i++){ bx(i%2?MAT.p_blue:MAT.p_white,s.x0+.5+i*.38,s.z0+.5,.32,.08+i%3*.04,.4,1); }
+    bx(MAT.p_yellow,-72,s.cz,.14,.006,s.z1-s.z0-.3,0); bx(MAT.p_mat,-71.2,s.cz,1.3,.008,s.z1-s.z0-.4,0); bx(MAT.p_steel,-72.6,s.cz,.35,.45,2.6,0); },
+  corr(k){},
+  brief(k){ const {s,dec,chair,bx}=k; dec('N',s.x0+1,s.x1-1,.9,2.6,MAT.papers); for(let r=0;r<3;r++) for(let c=0;c<6;c++) chair(s.x0+2.5+c*1.3,s.z1-2-r*1.4,Math.PI); bx(MAT.p_black,s.cx,s.z1-.2,3,1.5,.06,1.1); bx(MAT.screen,s.cx,s.z1-.24,2.8,1.3,.01,1.2); },
+  admin(k){ const {s,desk,chair,dec,bx}=k; for(let x=s.x0+2.5;x<s.x1-1.5;x+=3) for(let z=s.z0+3;z<s.z1-1.8;z+=3){ desk(x,z,0); chair(x,z+.7,0); bx(MAT.p_paper,x+.4,z+.1,.3,.12,.22,.76,.3);} dec('N',s.x0+1,s.x0+4.5,1,2.2,MAT.board); dec('N',s.x0+6,s.x0+9.5,1,2.2,MAT.board); dec('W',s.z0+2,s.z0+5,1,2.2,MAT.board); },
+  mess70(k){ const {s,table,chair,bx}=k; let i=0; for(let x=s.x0+2;x<s.x1-1;x+=3) for(let z=s.z0+2;z<s.z1-1.5;z+=2.8){ if(i++>=6) break; table(x,z,1.3,.9); chair(x-.5,z-.75,0); chair(x+.5,z+.75,Math.PI);} bx(MAT.p_dark,s.x1-.5,s.z0+1.2,.8,1.9,.8); bx(MAT.vend,s.x1-.9,s.z0+1.2,.01,1.2,.6,.4); bx(MAT.p_dark,s.x1-.5,s.z0+2.2,.8,1.9,.8); bx(MAT.vend,s.x1-.9,s.z0+2.2,.01,1.2,.6,.4); bx(MAT.p_steel,s.x0+.5,s.z0+2,.8,.95,2.5); bx(MAT.p_black,s.x0+.45,s.z0+1.4,.4,.45,.35,.95); },
+  chem(k){ const {s,bx}=k; for(let z=s.z0+2.2;z<s.z1-1;z+=2.6){ bx(MAT.p_white,s.cx,z,s.x1-s.x0-4,.92,1.2); bx(MAT.p_steel,s.cx,z,s.x1-s.x0-4.4,.5,.1,1.4); for(let x=s.x0+3;x<s.x1-2;x+=1.3) bx(MAT.glass,x,z-.3,.12,.25,.12,.92);} for(let x=s.x0+1;x<s.x1-.5;x+=2.2){ bx(MAT.p_white,x,s.z0+.5,1.8,2.3,.9); bx(MAT.glass,x,s.z0+.96,1.6,.9,.02,1); } },
+  lowbg(k){ const {s,bx}=k; for(let x=s.x0+2;x<s.x1-1;x+=3.2){ bx(MAT.p_lead,x,s.z0+2.5,1.4,1.1,1.4); bx(MAT.p_copper,x,s.z0+2.5,.8,.2,.8,1.1); bx(MAT.p_steel,x,s.z0+2.5,.3,.7,.3,1.3); bx(MAT.p_lead,x,s.z0+5.3,1.4,1.1,1.4); } bx(MAT.p_white,s.x1-1,s.cz,1.5,.9,4); },
+  refuge(k){ const {s,bx,cyl}=k; bx(MAT.p_steel,s.cx,s.z0+.4,s.x1-s.x0-.4,.45,.5); for(let x=s.x0+.5;x<s.x1-.3;x+=.5) cyl(MAT.p_cyl,x,s.z1-.35,.11,1.2,0); bx(MAT.p_blue,s.x1-.5,s.cz,.5,.6,.5); bx(MAT.p_yellow,s.x0+.3,s.cz,.2,.4,.3,1.3); },
+  rung(k){ const {s,bx}=k; bx(MAT.p_dark,s.cx,s.z0+4,2.2,1.6,1.4); bx(MAT.p_copper,s.cx,s.z0+4,1,.8,1,1.6); bx(MAT.p_white,s.cx,s.z1-2,2.4,.9,1.2); for(let z=s.z0+6.5;z<s.z1-3;z+=1.6) bx(MAT.rack,s.x0+.35,z,.6,1.9,.6); },
+  hallA(k){ const {s,Y,bx}=k; const c=new THREE.Vector3(s.cx,Y+7.2,s.cz+2);
+    const shell=new THREE.Mesh(new THREE.IcosahedronGeometry(5.6,2),new THREE.MeshLambertMaterial({color:0x8e959a,wireframe:true})); shell.position.copy(c); G[s.lv].add(shell);
+    const acr=new THREE.Mesh(new THREE.SphereGeometry(4.6,32,20),new THREE.MeshStandardMaterial({color:0xd8f0ff,transparent:true,opacity:.22,roughness:.05,envMap:envTex})); acr.position.copy(c); G[s.lv].add(acr);
+    for(let i=0;i<4;i++){ const a=i*Math.PI/2+.5; bx(MAT.p_steel,c.x+Math.cos(a)*4.8,c.z+Math.sin(a)*4.8,.3,2.5,.3); }
+    bx(MAT.p_steel,s.cx,s.z0+3,9,.15,1.6,4.2); bx(MAT.p_steel,s.cx-4.3,s.z0+5,.1,4.2,.1); bx(MAT.p_steel,s.cx+4.3,s.z0+5,.1,4.2,.1); bx(MAT.p_steel,s.cx,s.z0+3.8,9,.05,.05,5.2); },
+  hallB(k){ const {s,Y,cyl,bx}=k; const t=cyl(MAT.p_steel,s.cx,s.cz+2,5.2,11,0,0,0,40); cyl(MAT.p_dark,s.cx,s.cz+2,5.3,.3,11); for(let i=0;i<9;i++){ bx(MAT.p_steel,s.cx+5.6,s.cz+2-2+i*.5,1,.08,.4,i*1.2,0); } bx(MAT.p_steel,s.cx,s.cz+2,11.5,.2,1.4,11.3); cyl(MAT.p_chill,s.x0+1.5,s.cz,.25,s.z1-s.z0-2,2.5,Math.PI/2,0,10).position.y=Y+2.5; },
+  hallC(k){ const {s,bx,cyl}=k; bx(MAT.p_poly,s.cx,s.cz+2,7,5,7); bx(MAT.p_lead,s.cx,s.cz+2,4,.4,4,5); cyl(MAT.p_steel,s.cx,s.cz+2,1.1,3,5.4); bx(MAT.p_yellow,s.cx,s.z0+2,s.x1-s.x0-.6,.5,.5,13); bx(MAT.p_yellow,s.cx,s.z1-2,s.x1-s.x0-.6,.5,.5,13); bx(MAT.p_yellow,s.cx,s.cz,.6,.6,s.z1-s.z0-4,12.6); for(let x=s.x0+1;x<s.x1;x+=2.6) bx(MAT.rack,x,s.z1-.5,.8,2,.6); },
+  spine(k){ const {s,bx}=k; const R=rng(s.id.length*13); for(let x=s.x0+6;x<s.x1-4;x+=9+R()*11){ const z=R()<.5?s.z0+.55:s.z1-.55; bx(MAT.p_woodL,x,z,1.9,.08,.45,.42); bx(MAT.p_steel,x-.7,z,.08,.42,.4); bx(MAT.p_steel,x+.7,z,.08,.42,.4);} },
+  mess22(k){ const {s,table,bx}=k; for(let x=s.x0+3;x<s.x1-2;x+=4.6) for(let z=s.z0+3.5;z<s.z1-2;z+=3.4){ table(x,z,3.6,.9); bx(MAT.p_woodL,x,z-.75,3.4,.44,.35); bx(MAT.p_woodL,x,z+.75,3.4,.44,.35); bx(MAT.p_white,x,z,.06,.12,.06,.74);} bx(MAT.p_steel,s.x0+.6,s.cz-2,1,1,9); bx(MAT.glass,s.x0+.9,s.cz-2,.02,.5,8.6,1.2); },
+  conf(k){ const {s,table,chair,bx}=k; const w=s.x1-s.x0, d=s.z1-s.z0; table(s.cx,s.cz,Math.min(w-2.4,3.4),Math.min(d-2.4,1.3)); for(let i=-1;i<=1;i++){ chair(s.cx+i*1,s.cz-1.1,0); chair(s.cx+i*1,s.cz+1.1,Math.PI);} bx(MAT.p_black,s.x1-.15,s.cz,.05,1,1.8,1.1); bx(MAT.screen,s.x1-.2,s.cz,.005,.9,1.7,1.15,Math.PI/2); },
+  garden(k){ const {s,Y,bx}=k; const leafGeo=new THREE.SphereGeometry(.16,7,5); const inst=new THREE.InstancedMesh(leafGeo,MAT.p_leaf,900); const red=new THREE.InstancedMesh(new THREE.SphereGeometry(.06,6,4),MAT.p_tomato,120); const pink=new THREE.InstancedMesh(new THREE.SphereGeometry(.07,6,4),MAT.p_pink,80);
+    let n=0,nr=0,np=0; const R=rng(99); const M4=new THREE.Matrix4();
+    for(let x=s.x0+2.5;x<s.x1-1.5;x+=3.2){ for(let tier=0;tier<3;tier++){ const y=.5+tier*.8; bx(MAT.p_white,x,s.cz,1,.08,s.z1-s.z0-4,y); bx(MAT.grow,x,s.cz,.25,.03,s.z1-s.z0-4.2,y+.62);
+      for(let z=s.z0+2.3;z<s.z1-2;z+=.32){ if(n<900){ M4.makeScale(1+R()*.6,.7+R()*.6,1+R()*.6); M4.setPosition(x+(R()-.5)*.6,Y+y+.18,z); inst.setMatrixAt(n++,M4);} if(R()<.08&&nr<120){ M4.makeScale(1,1,1); M4.setPosition(x+(R()-.5)*.5,Y+y+.3,z); red.setMatrixAt(nr++,M4);} if(R()<.05&&np<80){ M4.setPosition(x+(R()-.5)*.5,Y+y+.36,z); pink.setMatrixAt(np++,M4);} } }
+      bx(MAT.p_steel,x,s.z0+2,.06,2.4,.06); bx(MAT.p_steel,x,s.z1-2,.06,2.4,.06); }
+    inst.count=n; red.count=nr; pink.count=np; [inst,red,pink].forEach(m=>{m.instanceMatrix.needsUpdate=true; G[s.lv].add(m);}); },
+  transfer(k){ const {s,bx,shelf}=k; bx(MAT.p_white,s.cx,s.cz,s.x1-s.x0-1.5,1.05,.7); bx(MAT.p_dark,s.cx,s.cz,.05,1.8,.7,1.05); bx(MAT.p_paper,s.cx-1.5,s.cz,.35,.02,.25,1.05); bx(MAT.p_paper,s.cx+2,s.cz,.35,.02,.25,1.05);
+    for(let x=s.x0+1;x<s.x1-.5;x+=2.1){ shelf(x,s.z1-.5,1.9,.7,2.2,0,MAT.p_steel); for(let t=0;t<3;t++) bx(t%2?MAT.p_grey:MAT.p_poly,x,s.z1-.5,1.4,.35,.5,.3+t*.7); } bx(MAT.p_steel,s.x0+2,s.z0+3,1.2,.8,.7); },
+  gym(k){ const {s,bx}=k; for(let x=s.x0+1.5;x<s.x1-1;x+=2){ bx(MAT.p_dark,x,s.z1-1.4,.8,1.2,1.8); bx(MAT.p_black,x,s.z1-.8,.7,.05,1.6,.2);} bx(MAT.p_steel,s.x0+.5,s.cz,.6,1.8,2.8); bx(MAT.p_mat,s.cx,s.z0+3,4,.04,3,0); bx(MAT.p_dark,s.cx+2,s.z0+5.5,1.2,.45,.4); },
+  medical(k){ const {s,bx}=k; for(let x=s.x0+2;x<s.x1-1;x+=3){ bx(MAT.p_white,x,s.z0+1.5,1,.65,2); bx(MAT.p_steel,x,s.z0+1.5,.05,.05,2.4,2.4); bx(MAT.p_cream,x+1.1,s.z0+1.5,.02,1.8,2.2,.4);} bx(MAT.p_white,s.x1-.4,s.z1-2,.6,1.9,2); },
+  beach(k){ const {s,bx,dec}=k; const h=s.h; dec('N',s.x0+.2,s.x1-.2,0,h,MAT.beachPanel); dec('W',s.z0+.2,s.z1-.2,0,h,MAT.beachPanel); dec('E',s.z0+.2,s.z1-.2,0,h,MAT.beachPanel);
+    k.B.quad(MAT.beachPanel,[s.x0,s.y+h-.02,s.z1],[s.x1,s.y+h-.02,s.z1],[s.x1,s.y+h-.02,s.z0],[s.x0,s.y+h-.02,s.z0]);
+    for(let i=0;i<5;i++) bx(MAT.p_woodL,s.cx,s.cz-.5+i*.14,s.x1-s.x0-1.4,.04,.1,.44); bx(MAT.p_wood,s.cx-1.6,s.cz,.08,.44,.6); bx(MAT.p_wood,s.cx+1.6,s.cz,.08,.44,.6); bx(MAT.timer,s.x1-.5,s.z1-.3,.25,.12,.02,1.5); },
+  common(k){ const {s,bx}=k; bx(MAT.p_rug,s.cx,s.cz,5,.01,4); bx(MAT.p_sofa,s.cx,s.cz+1.4,3.4,.45,.9); bx(MAT.p_sofa,s.cx,s.cz+1.8,3.4,.8,.25); bx(MAT.p_sofa,s.cx-2,s.cz,.9,.45,2.4); bx(MAT.p_black,s.x1-.15,s.cz,.06,1.6,2.8,.9); bx(MAT.screen,s.x1-.2,s.cz,.005,1.4,2.6,1,Math.PI/2); },
+  games(k){ const {s,bx}=k; bx(MAT.p_green,s.cx,s.cz,2.7,.06,1.5,.72); bx(MAT.p_white,s.cx,s.cz,.02,.15,1.6,.78); bx(MAT.p_steel,s.cx,s.cz,2.2,.7,.08); bx(MAT.p_black,s.x0+1,s.z1-.6,1.5,1.1,.6); bx(MAT.p_black,s.x0+1,s.z1-1.1,1.4,.05,.3,.72); bx(MAT.p_wood,s.x1-2,s.z0+2,1.2,.74,1.2); },
+  library(k){ const {s,shelf,bx}=k; for(let x=s.x0+.8;x<s.x1-.5;x+=1.6) shelf(x,s.z0+.25,1.5,.4,2.3,0,MAT.p_wood,MAT.books); for(let z=s.z0+2;z<s.z1-1;z+=1.6) shelf(s.x0+.25,z,1.5,.4,2.3,Math.PI/2,MAT.p_wood,MAT.books); bx(MAT.p_sofa,s.cx+1,s.cz+1,1,.45,1); bx(MAT.p_sofa,s.cx-1.2,s.cz+1.2,1,.45,1); bx(MAT.p_wood,s.cx,s.z1-1.8,2,.74,.9); },
+  rescorr(k){ const {s,dec}=k; const dm=lam('door_r',0xE2D6C4); for(let x=s.x0+1.5;x<s.x1-1;x+=3.4){ if(!s.gaps.some(g=>g.side==='N'&&x+.7>g.lo-.3&&x-.7<g.hi+.3)) dec('N',x-.55,x+.55,0,2.1,dm,T+.01); if(!s.gaps.some(g=>g.side==='S'&&x+.7>g.lo-.3&&x-.7<g.hi+.3)) dec('S',x-.55,x+.55,0,2.1,dm,T+.01);} },
+  quarters(k){ const {s,bx,dec}=k; bx(MAT.p_cream,s.x0+1.2,s.z0+1.4,1.6,.5,2.2); bx(MAT.p_white,s.x0+1.2,s.z0+.35,1.6,.8,.1); bx(MAT.p_wood,s.x1-.7,s.z0+1,1,.74,.6); bx(MAT.p_wood,s.x1-.4,s.z0+3,.6,2,1.2); dec('W',s.z1-1.6,s.z1-.6,0,2.1,lam('door_r',0xE2D6C4)); },
+  lounge(k){ const {s,bx}=k; bx(MAT.p_rug,s.cx,s.cz,7,.01,5); for(const [x,z,r] of [[s.cx-2.5,s.cz,Math.PI/2],[s.cx+2.5,s.cz,-Math.PI/2],[s.cx,s.cz+2.4,Math.PI]]){ bx(MAT.p_sofa,x,z,3,.45,1,0,r); } bx(MAT.p_wood,s.cx,s.cz,1.4,.4,.8); bx(MAT.p_sofa,s.x0+1.2,s.z1-1.5,1,.45,1); },
+  laundry(k){ const {s,bx,cyl}=k; for(let x=s.x0+.8;x<s.x1-.5;x+=.8){ bx(MAT.p_white,x,s.z1-.45,.7,.9,.7); const d=cyl(MAT.p_dark,x,s.z1-.8,.2,.02,.45,Math.PI/2); d.position.y=s.y+.45; } bx(MAT.p_white,s.cx,s.z0+1.2,3,.9,.8); },
+  longstay(k){ const {s,bx,dec}=k; bx(MAT.p_rug,s.cx,s.cz,4,.01,3); bx(MAT.p_blue,s.x0+1.6,s.z1-1.4,2,.55,2.2); bx(MAT.p_wood,s.x1-1,s.z1-.4,1.6,2,.4); bx(MAT.p_leaf,s.x1-.6,s.z0+.6,.5,1,.5); bx(MAT.p_wood,s.x1-.6,s.z0+.6,.4,.4,.4); dec('N',s.x0+2,s.x0+3.2,1.3,2.1,MAT.board); dec('N',s.x0+4,s.x0+5.6,1.1,2.2,MAT.papers); bx(MAT.p_sofa,s.cx,s.z0+1,2.2,.45,.9); },
+  analysis(k){ const {s,desk,chair,dec}=k; for(let x=s.x0+3;x<s.x1-2;x+=3.4) for(let z=s.z0+4;z<s.z1-3;z+=3.2){ desk(x,z,0); desk(x+1.55,z,0); chair(x,z+.7,0); } ['N','W'].forEach(sd=>{ const si=sideInfo(s,sd); for(let a=si.a0+1;a<si.a1-1.8;a+=2.6) dec(sd,a,a+2.2,1,2.4,MAT.screen); }); for(let x=s.x0+1;x<s.x1-5;x+=2.6) if(!s.gaps.some(g=>g.side==='S'&&x+2.4>g.lo&&x<g.hi)) dec('S',x,x+2.2,1,2.4,MAT.screen); },
+  darton(k){ const {s,bx,shelf,chair,desk}=k; desk(s.cx,s.cz,-Math.PI/2); chair(s.cx+.8,s.cz,-Math.PI/2); for(let z=s.z0+.9;z<s.z1-.6;z+=1.5) shelf(s.x1-.25,z,1.4,.4,2.4,-Math.PI/2,MAT.p_wood,MAT.books); for(let i=0;i<6;i++) bx(MAT.p_paper,s.cx-.3+i*.12,s.cz-.3,.3,.04+i*.02,.22,.76,i*.4); bx(MAT.p_black,s.cx-.35,s.cz+.45,.18,.24,.03,.76,.4); chair(s.cx-1.1,s.cz+1,Math.PI/2); },
+  lab(k){ const {s,bx}=k; bx(MAT.p_dark,s.cx,s.cz,s.x1-s.x0-3,.85,1.6); bx(MAT.p_steel,s.cx,s.cz,s.x1-s.x0-3.2,.04,1.5,.85); for(let x=s.x0+1.6;x<s.x1-1.4;x+=1.1){ bx(MAT.p_black,x,s.cz+.3,.3,.4,.3,.9); bx(MAT.p_copper,x+.3,s.cz-.3,.2,.2,.2,.9);} for(let x=s.x0+.8;x<s.x1-.5;x+=1.3){ bx(MAT.rack,x,s.z1-.4,.7,1.9,.6); bx(MAT.leds,x,s.z1-.74,.6,1.7,.01,.1);} bx(MAT.p_white,s.x0+.6,s.cz,.8,.92,3.5); },
+  charoff(k){ const {s,bx,dec,chair}=k; bx(MAT.p_white,s.cx,s.z1-.6,1.8,.74,.8); bx(MAT.p_black,s.cx,s.z1-.35,.6,.4,.04,.8); bx(MAT.screen,s.cx,s.z1-.37,.55,.33,.005,.83); chair(s.cx,s.z1-1.3,Math.PI); dec('W',s.z0+.7,s.z1-.8,1,2.1,MAT.board); k.cyl(MAT.p_steel,s.cx+.7,s.z1-.6,.04,.22,.74); },
+  proto(k){ const {s,bx}=k; bx(MAT.p_steel,s.cx-2,s.cz,3.2,1.1,.9); bx(MAT.p_dark,s.cx-3.2,s.cz,.8,.6,.8,1.1); bx(MAT.p_steel,s.cx+2.5,s.cz-1.5,1.4,2.1,1.4); bx(MAT.p_dark,s.cx+2.5,s.cz-1.5,.5,.6,.5,2.1); bx(MAT.p_wood,s.cx,s.z1-.6,6,.9,.9); bx(MAT.p_dark,s.cx,s.z1-.12,6,1.4,.04,1.2); },
+  materials(k){ const {s,bx,cyl}=k; for(let x=s.x0+1.5;x<s.x1-1;x+=1.2){ const r=cyl(x%2.4<1.2?MAT.p_olive:MAT.p_grey,x,s.z1-.7,.16,1.5,.9,0,Math.PI/2); r.rotation.y=Math.PI/2; r.position.y=s.y+.9; } bx(MAT.p_steel,s.cx,s.cz,3,2.2,.12); bx(MAT.p_white,s.cx,s.z0+1.5,5,.9,1); },
+  threat(k){ const {s,bx}=k; for(let x=s.x0+1;x<s.x1-.5;x+=1.6){ bx(MAT.p_white,x,s.z0+.5,1.4,2.2,.9); bx(MAT.p_frost,x,s.z0+.96,1.2,1.7,.02,.3);} bx(MAT.p_steel,s.cx,s.cz+2,2.4,.9,1.1); bx(MAT.p_steel,s.cx,s.cz+2,.08,.8,.08,1.3); },
+  jenkins(k){ const {s,bx,dec}=k; bx(MAT.p_dark,s.cx,s.cz+.5,1.4,1.1,.7); bx(MAT.p_black,s.cx,s.cz+.3,.6,.4,.04,1.2); dec('N',s.x0+.4,s.x1-.4,.8,2.6,MAT.mapWall); },
+  opsfloor(k){ const {s,Y,bx,dec}=k; dec('N',s.x0+2,s.x1-2,1.2,6.5,MAT.mapWall); dec('W',s.z0+2,s.z0+8,2,5,MAT.screen); dec('E',s.z0+2,s.z0+8,2,5,MAT.screen);
+    for(let t=0;t<4;t++){ const z=s.z0+6+t*3.6, y=t*.35; bx(MAT.p_dark,s.cx,z,s.x1-s.x0-4,y,3.6,0); for(let x=s.x0+3.5;x<s.x1-3;x+=2.2){ bx(MAT.p_black,x,z-.6,1.8,.75,.7,y); bx(MAT.screen,x,z-.9,.6,.36,.01,y+.95); bx(MAT.p_black,x,z-.92,.62,.4,.03,y+.93); } } },
+  briefing(k){ const {s,table,bx,dec}=k; table(s.cx,s.cz,5,1.6); for(let i=0;i<6;i++) bx(i%2?MAT.p_olive:MAT.p_black,s.cx-2+i*.8,s.cz,.45,.5,.35,.74); dec('N',s.x0+1,s.x0+5,1,2.6,MAT.screen); dec('N',s.x1-5,s.x1-1,1,2.6,MAT.mapWall); },
+  armoury(k){ const {s,bx}=k; for(let x=s.x0+1;x<s.x1-.5;x+=1.5){ bx(MAT.p_dark,x,s.z0+.4,1.3,2.1,.5); } bx(MAT.meshWall,s.cx,s.cz+.8,s.x1-s.x0-.4,2.6,.04); bx(MAT.p_steel,s.cx,s.z1-1.2,3,1,.7); },
+  suitbay(k){ const {s,bx}=k; for(let r=0;r<3;r++){ const z=s.z0+2.5+r*3.3; bx(MAT.p_steel,s.cx,z,s.x1-s.x0-2,.08,.08,2.3); for(let x=s.x0+1.6;x<s.x1-1.2;x+=1){ bx(MAT.p_grey,x,z,.55,1.5,.35,.7); bx(MAT.p_dark,x,z,.4,.35,.35,1.95); } } bx(MAT.p_steel,s.x1-1,s.z1-1,1.4,.9,.8); },
+  trauma(k){ const {s,bx}=k; bx(MAT.p_steel,s.cx,s.cz,.8,.9,2.1); bx(MAT.p_white,s.cx,s.cz,.7,.08,2,.9); bx(MAT.fluoro,s.cx,s.cz,1,.05,1,2.7); bx(MAT.p_black,s.cx+1.2,s.cz-.8,.5,1.7,.4); bx(MAT.screen,s.cx+1.2,s.cz-.59,.4,.3,.01,1.35); bx(MAT.glass,s.x1-3,s.cz,.04,2.6,s.z1-s.z0-1); bx(MAT.p_white,s.x1-1.5,s.cz,.9,.65,2); },
+  opsgym(k){ const {s,bx}=k; bx(MAT.p_mat,s.cx-2,s.cz,5,.5,5); for(const [i,j] of [[-1,-1],[1,-1],[-1,1],[1,1]]) bx(MAT.p_ring,s.cx-2+i*2.4,s.cz+j*2.4,.12,1.5,.12,.5); for(let h=0;h<3;h++){ bx(MAT.p_ring,s.cx-2,s.cz-2.4,4.8,.03,.03,.9+h*.35); bx(MAT.p_ring,s.cx-2,s.cz+2.4,4.8,.03,.03,.9+h*.35); bx(MAT.p_ring,s.cx-4.4,s.cz,.03,.03,4.8,.9+h*.35); bx(MAT.p_ring,s.cx+.4,s.cz,.03,.03,4.8,.9+h*.35);} bx(MAT.p_black,s.x1-1,s.cz,1.2,1.2,4); bx(MAT.p_mat,s.x1-2.8,s.z1-2,2,.04,3); },
+  sim(k){ const {s,bx}=k; const R=rng(s.id.charCodeAt(3)); for(let i=0;i<9;i++){ const x=s.x0+1.5+R()*(s.x1-s.x0-3), z=s.z0+3+R()*(s.z1-s.z0-5); bx(MAT.p_dark,x,z,R()<.5?3:.2,2.8,R()<.5?.2:3); } bx(MAT.red,s.x0+.2,s.z0+.5,.04,.12,.3,2.4); bx(MAT.p_steel,s.cx,s.cz,s.x1-s.x0-1,.2,.2,8); },
+  training(k){ const {s,bx}=k; for(const [x,z] of [[s.x0+5,s.z0+5],[s.x0+5,s.z0+10],[s.x0+11,s.z0+5]]){ bx(MAT.p_wood,x,z,5,2.6,.15); bx(MAT.p_wood,x-2.5,z+2,.15,2.6,4); } bx(MAT.p_grey,s.x1-.3,s.cz,.3,8,6); for(let i=0;i<30;i++) bx(MAT.p_yellow,s.x1-.5,s.cz-2.8+(i%6)*1.1,.12,.12,.15,.8+Math.floor(i/6)*1.4);
+    for(const x of [s.x0+17,s.x0+20]){ bx(MAT.p_wood,x,s.z1-4,.3,7,.3); } bx(MAT.p_wood,s.x0+18.5,s.z1-4,3.5,.3,.3,7); for(let i=0;i<4;i++) bx(MAT.p_cream,s.x0+17.4+i*.7,s.z1-4,.04,5,.04,2); for(let i=0;i<6;i++) bx(MAT.p_orange,s.x0+3+i*3,s.z1-2,.3,.5,.3); },
+  plantdrift(k){ const {s,Y,cyl,bx}=k; const L=s.x1-s.x0; [[MAT.p_chill,.32,-1.1],[MAT.p_pipeG,.18,-.4],[MAT.p_pipeR,.14,.1],[MAT.p_steel,.45,1.05]].forEach(([m,r,dz])=>{ const p=cyl(m,s.cx,s.cz+dz,r,L,s.h-.6,0,Math.PI/2,12); p.position.y=Y+s.h-.6-r; }); bx(MAT.p_steel,s.cx,s.z0+.3,L,.06,.4,s.h-.35); },
+  refrig(k){ const {s,Y,cyl,bx}=k; for(let i=0;i<4;i++){ const z=s.z0+3+i*5; const c=cyl(MAT.p_chill,s.cx,z,1.1,14,1.4,0,Math.PI/2,20); c.position.y=Y+1.6; bx(MAT.p_dark,s.cx,z,14,.5,2.2); bx(MAT.p_steel,s.cx-8,z,1.4,2.2,1.6); const p=cyl(MAT.p_chill,s.cx-8,z,.3,s.h-2.2,2.2); }
+    cyl(MAT.p_chill,s.cx,s.z1-1,.5,s.x1-s.x0,s.h-1.5,0,Math.PI/2,14).position.y=Y+s.h-1.5; },
+  ahu(k){ const {s,Y,bx}=k; for(let i=0;i<2;i++){ const x=s.x0+5+i*10; bx(MAT.p_steel,x,s.cz,6,4,5); bx(MAT.p_steel,x,s.cz,2.5,s.h-4,2.5,4); const fan=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,.1,6),MAT.p_dark); fan.rotation.x=Math.PI/2; fan.position.set(x,Y+2.2,s.cz-2.56); G[s.lv].add(fan); spinners.push(fan); bx(MAT.meshWall,x,s.cz-2.6,3.2,3.2,.02,.6); } },
+  water(k){ const {s,cyl,bx}=k; for(let i=0;i<3;i++) cyl(MAT.p_white,s.x0+3+i*5,s.cz+1,1.6,5,0,0,0,24); bx(MAT.p_steel,s.cx,s.z1-1,s.x1-s.x0-2,1,1); cyl(MAT.p_chill,s.cx,s.z1-1.8,.2,s.x1-s.x0-1,3.5,0,Math.PI/2).position.y=s.y+3.5; },
+  power(k){ const {s,bx}=k; for(let x=s.x0+1;x<s.x1-.5;x+=1.2) bx(MAT.p_grey,x,s.z1-.6,1.1,2.2,.9); for(let i=0;i<2;i++){ bx(MAT.p_dark,s.x0+4+i*6,s.cz-1,3,2.4,2.2); for(let f=0;f<8;f++) bx(MAT.p_dark,s.x0+2.6+i*6+f*.4,s.cz-2.2,.05,2,.3);} bx(MAT.p_yellow,s.x0+.2,s.cz,.02,.5,.5,1.6); },
+  servers(k){ const {s,bx}=k; for(let r=0;r<2;r++) for(let x=s.x0+2;x<s.x1-1.5;x+=.75){ const z=s.z0+2.3+r*2.6; bx(MAT.rack,x,z,.7,2.1,1); bx(MAT.leds,x,z-.51,.6,1.9,.01,.1);} },
+  operator(k){ const {s,bx,dec,chair}=k; // desk against north wall facing the south door: she never sits with her back to a door
+    bx(MAT.p_wood,s.cx,s.z0+2.3,2.4,.76,1); chair(s.cx,s.z0+1.4,Math.PI,MAT.p_black); chair(s.cx-.7,s.z0+3.6,0); chair(s.cx+.7,s.z0+3.6,0);
+    dec('W',s.z0+2,s.z1-3,.9,2.6,MAT.blinds); dec('E',s.z0+3,s.z1-3,1.2,2.4,MAT.papers); bx(MAT.p_dark,s.x1-1.2,s.z1-1.2,1.4,.4,1.4); bx(MAT.p_black,s.cx+.6,s.z0+2.3,.12,.03,.12,.76); },
+  council(k){ const {s,table,chair,bx,dec}=k; table(s.cx,s.cz,4.2,1.6,MAT.p_dark); [[-1.4,-1.1,0],[0,-1.1,0],[1.4,-1.1,0],[-1.4,1.1,Math.PI],[0,1.1,Math.PI],[1.4,1.1,Math.PI]].forEach(([x,z,r])=>chair(s.cx+x,s.cz+z,r,MAT.p_black));
+    for(let i=0;i<5;i++) dec('N',s.x0+2+i*3,s.x0+4.4+i*3,1.2,2.5,MAT.screen); },
+  archive(k){ const {s,shelf,bx}=k; for(let z=s.z0+2.5;z<s.z1-2;z+=2.2){ shelf(s.cx-5,z,11,.5,2.6,0,MAT.p_dark,MAT.archiveBox); shelf(s.cx-5,z+.52,11,.5,2.6,Math.PI,MAT.p_dark,MAT.archiveBox);} bx(MAT.p_wood,s.cx+7.5,s.cz,1.8,.76,1); bx(MAT.p_grey,s.x1-.6,s.z1-1.5,.9,2.2,1.4); }
+};
+function makeSteam(s){
+  const n=180, geo=new THREE.BufferGeometry(), pos=new Float32Array(n*3), R=rng(5);
+  for(let i=0;i<n;i++){ pos[i*3]=s.x0+3+R()*(s.x1-s.x0-4); pos[i*3+1]=s.y+R()*2.8; pos[i*3+2]=s.z0+.4+R()*2.2; }
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const pts=new THREE.Points(geo,new THREE.PointsMaterial({color:0xffffff,size:.55,transparent:true,opacity:.14,depthWrite:false})); G[s.lv].add(pts);
+  return {pts,pos,n,s};
+}
+spaces.forEach(s=>{ if(s.props&&PROPS[s.props]) PROPS[s.props](kit(s)); });
+
+/* ---------- shafts and cages ---------- */
+const MAIN_SHAFT={x0:-201.5,z0:-1.5,x1:-198.5,z1:1.5,yTop:120,yBot:0};
+const INNER_SHAFT={x0:4,z0:34,x1:7,z1:38};
+(function buildShafts(){
+  // main shaft: rock walls with landing openings on W/E at collar and 2070
+  const sh=MAIN_SHAFT;
+  const sides=[['N',sh.z0,'x'],['S',sh.z1,'x'],['W',sh.x0,'z'],['E',sh.x1,'z']];
+  sides.forEach(([sd,e])=>{
+    const segs=(sd==='W'||sd==='E')?[[5.2,119.8]]:[[-.01,126]];
+    segs.forEach(([y0,y1])=>{ const L=(sd==='N'||sd==='S')?[sh.x0,sh.x1]:[sh.z0,sh.z1];
+      const corner=(sd==='N'||sd==='S')?[L[0],y0,e]:[e,y0,L[0]]; const du=(sd==='N'||sd==='S')?[3,0,0]:[0,0,3];
+      const inward=sd==='N'?[0,0,1]:sd==='S'?[0,0,-1]:sd==='W'?[1,0,0]:[-1,0,0];
+      rockSurface(Bshaft,MAT.wallRock,corner,du,[0,y1-y0,0],3,Math.ceil((y1-y0)/1.4),[-inward[0],0,-inward[2]],.6,false,false,0); });
+  });
+  for(let y=6;y<118;y+=2.4){ Bshaft.box(MAT.p_wood,-200,y,sh.z0+.1,3,.18,.18); Bshaft.box(MAT.p_wood,-200,y,sh.z1-.1,3,.18,.18); }
+  for(let y=9;y<116;y+=10.5){ Bshaft.quad(MAT.bulb,[sh.x0+.02,y,-1],[sh.x0+.02,y,1],[sh.x0+.02,y+2.4,1],[sh.x0+.02,y+2.4,-1]); Bshaft.quad(MAT.p_dark,[sh.x1-.02,y,-1],[sh.x1-.02,y,1],[sh.x1-.02,y+2.4,1],[sh.x1-.02,y+2.4,-1]); }
+  Bshaft.box(MAT.p_steel,-200,-0.01,sh.z0+.05,.08,126,.08); Bshaft.box(MAT.p_steel,-200,-0.01,sh.z1-.05,.08,126,.08);
+  // inner shaft: steel, openings on N at each landing
+  const is=INNER_SHAFT; const ys=[LEVELS.l2070.y,LEVELS.l2200.y,LEVELS.plant.y,LEVELS.l2320.y].sort((a,b)=>a-b);
+  const yb=ys[0]-.5, yt=ys[ys.length-1]+3.2;
+  const st=lam('shaftSteel',0x5f666b,{side:DS});
+  Bshaft.quad(st,[is.x0,yb,is.z1],[is.x1,yb,is.z1],[is.x1,yt,is.z1],[is.x0,yt,is.z1]);
+  Bshaft.quad(st,[is.x0,yb,is.z0],[is.x0,yb,is.z1],[is.x0,yt,is.z1],[is.x0,yt,is.z0]);
+  Bshaft.quad(st,[is.x1,yb,is.z0],[is.x1,yb,is.z1],[is.x1,yt,is.z1],[is.x1,yt,is.z0]);
+  let prev=yb; ys.forEach(y=>{ Bshaft.quad(st,[is.x0,prev,is.z0],[is.x1,prev,is.z0],[is.x1,y,is.z0],[is.x0,y,is.z0]); prev=y+2.6; Bshaft.quad(MAT.bulb,[is.x0+.02,y+2.8,is.z0+.6],[is.x0+.02,y+2.8,is.z0+1.2],[is.x0+.02,y+2.95,is.z0+1.2],[is.x0+.02,y+2.95,is.z0+.6]); });
+  Bshaft.quad(st,[is.x0,prev,is.z0],[is.x1,prev,is.z0],[is.x1,yt,is.z0],[is.x0,yt,is.z0]);
+  for(let y=yb;y<yt;y+=3){ Bshaft.box(MAT.p_dark,is.x0+.08,y,is.z1-.08,.1,.1,.1); }
+  // lobby enclosure around the shaft
+  ['lobby70','lobby22','lobbyP','lobby23'].forEach(id=>{ const s=byId[id]; const B=BT[s.lv], m=wallMat(s), Y=s.y;
+    B.quad(m,[s.x0,Y,is.z0],[is.x0,Y,is.z0],[is.x0,Y+s.h,is.z0],[s.x0,Y+s.h,is.z0]); B.quad(m,[is.x1,Y,is.z0],[s.x1,Y,is.z0],[s.x1,Y+s.h,is.z0],[is.x1,Y+s.h,is.z0]);
+    B.quad(m,[is.x0,Y+2.6,is.z0],[is.x1,Y+2.6,is.z0],[is.x1,Y+s.h,is.z0],[is.x0,Y+s.h,is.z0]);
+    B.box(MAT.p_dark,is.x1+.4,Y+1.1,is.z0-.02,.18,.3,.04); });
+  // surface headframe and exterior
+  const Y=LEVELS.surf.y, B=BT.surf;
+  const gtex=TX.gravel.clone(); gtex.needsUpdate=true; gtex.repeat.set(80,80); const ground=new THREE.Mesh(new THREE.PlaneGeometry(900,900),lam('ground',0xffffff,{map:gtex})); ground.rotation.x=-Math.PI/2; ground.position.set(-200,Y-.03,0); G.surf.add(ground);
+  const hf=MAT.p_steel;
+  for(const [dx,dz] of [[-2.8,-2.8],[2.8,-2.8],[-2.8,2.8],[2.8,2.8]]) B.box(hf,-200+dx*.8,Y+6,dz*.8,.45,26,.45);
+  for(let y=Y+8;y<Y+32;y+=4){ B.box(hf,-200,y,-2.24,4.9,.25,.25); B.box(hf,-200,y,2.24,4.9,.25,.25); B.box(hf,-202.24,y,0,.25,.25,4.9); B.box(hf,-197.76,y,0,.25,.25,4.9); }
+  B.box(hf,-200,Y+32,0,6,.6,6); for(const z of [-1.2,1.2]){ const w=new THREE.Mesh(new THREE.TorusGeometry(1.6,.14,8,28),MAT.p_dark); w.position.set(-200,Y+33.8,z); G.surf.add(w); spinners.push({slow:w}); }
+  B.box(hf,-192,Y,0,.6,30,.6,-.35); B.box(MAT.p_grey,-200,Y+6,0,7,.3,7);
+  B.box(MAT.p_grey,-160,Y,-40,34,18,22); B.box(MAT.p_dark,-160,Y+18,-40,34,.6,22); B.box(MAT.p_grey,-175,Y,-52,6,26,6);
+  B.box(MAT.p_cream,-236,Y,-22,14,6,9); B.box(MAT.p_grey,-209,Y+3.1,0,10.4,.3,8.4); B.box(MAT.p_grey,-200,Y+6.1,0,8.4,.3,8.4);
+  // boreal trees
+  const tg=new THREE.ConeGeometry(1.6,8,7); const trees=new THREE.InstancedMesh(tg,lam('tree',0x1f3a2a),220); const M4=new THREE.Matrix4(), R=rng(77); let n=0;
+  for(let i=0;i<600&&n<220;i++){ const a=R()*Math.PI*2, r=60+R()*180; const x=-200+Math.cos(a)*r, z=Math.sin(a)*r; if(x<-140&&x>-270&&Math.abs(z)<40) continue; const s=.7+R()*.9; M4.makeScale(s,s*(.9+R()*.5),s); M4.setPosition(x,Y+4*s,z); trees.setMatrixAt(n++,M4); }
+  trees.count=n; trees.instanceMatrix.needsUpdate=true; G.surf.add(trees);
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(420,32,16),domeMat); dome.position.set(-200,Y,0); dome.renderOrder=-1; G.surf.add(dome);
+})();
+Bshaft.build(Gshaft);
+LV_ORDER.forEach(lv=>BT[lv].build(G[lv]));
+
+/* cage cars */
+function makeCar(kind){
+  const g=new THREE.Group();
+  const main=kind==='main'; const w=main?2.6:2.7, d=main?2.6:3.5, h=2.7;
+  const floor=new THREE.Mesh(new THREE.BoxGeometry(w,.1,d),MAT.p_steel); floor.position.y=-.05; g.add(floor);
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(w,.1,d),MAT.p_dark); roof.position.y=h; g.add(roof);
+  const lamp=new THREE.Mesh(new THREE.BoxGeometry(.8,.03,.3),main?MAT.bulb:MAT.fluoro); lamp.position.y=h-.03; g.add(lamp);
+  const wm=main?MAT.meshWall:lam('carSteel',0x8d949a,{side:DS});
+  if(main){ [[-d/2],[d/2]].forEach(([z])=>{ const p=new THREE.Mesh(new THREE.BoxGeometry(w,h,.03),wm); p.position.set(0,h/2,z); g.add(p); }); }
+  else { const back=new THREE.Mesh(new THREE.BoxGeometry(w,h,.04),wm); back.position.set(0,h/2,d/2); g.add(back); [-w/2,w/2].forEach(x=>{ const p=new THREE.Mesh(new THREE.BoxGeometry(.04,h,d),wm); p.position.set(x,h/2,0); g.add(p); });
+    const pan=new THREE.Mesh(new THREE.BoxGeometry(.3,.5,.03),MAT.p_black); pan.position.set(w/2-.25,1.25,d/2-.05); g.add(pan); }
+  const gate=new THREE.Mesh(new THREE.BoxGeometry(main?.03:w,h-.2,main?d:.03),MAT.meshWall); gate.position.set(main?-w/2:0,h/2,main?0:-d/2); g.add(gate);
+  let gate2=null; if(main){ gate2=gate.clone(); gate2.position.x=w/2; g.add(gate2); }
+  scene.add(g); return {g,gate,gate2,kind,h};
+}
+const carMain=makeCar('main'), carInner=makeCar('inner');
+carMain.g.position.set(-200,LEVELS.surf.y,0); carInner.g.position.set(5.5,LEVELS.l2200.y,36);
+carMain.level='surf'; carInner.level='l2200';
+
+/* =========================================================
+   PEOPLE
+   ========================================================= */
+const FG={leg:new THREE.BoxGeometry(.15,.82,.17),torso:new THREE.CylinderGeometry(.18,.2,.62,10),coat:new THREE.CylinderGeometry(.22,.3,1.02,12),head:new THREE.SphereGeometry(.115,14,10),arm:new THREE.BoxGeometry(.09,.62,.11),hat:new THREE.SphereGeometry(.14,14,7,0,Math.PI*2,0,Math.PI/2),lamp:new THREE.BoxGeometry(.07,.05,.05),band:new THREE.CylinderGeometry(.205,.205,.05,10)};
+const FM={}; const fmat=c=>FM[c]||(FM[c]=new THREE.MeshLambertMaterial({color:c}));
+const SKIN=[0x8d5524,0xc68642,0xe0ac69,0xf1c27d,0xffdbac,0x5c3a21,0xa0673a];
+const PERSONAL=[0x2f3e56,0x6b3f3f,0x3f5a45,0x7a6a4f,0x222222,0x8a8f96,0x5b4a6b,0xa36b3a,0x3b6b7a,0x9b8f7a];
+function person(role,seed,seated){
+  const R=rng(seed*97+3), g=new THREE.Group(), body=new THREE.Group(); g.add(body);
+  const pick=a=>a[(R()*a.length)|0];
+  const legC={coat:pick(PERSONAL),ops:0x22282c,crew:0x2b3440,tech:0xa9c3d8,guard:0x1f2a3a,plant:0x4f5559,plain:pick(PERSONAL)}[role];
+  const topC={coat:0xf4f4f0,ops:0x2b3237,crew:0xdd7a24,tech:0xb4cadb,guard:0x26344c,plant:0x5a6166,plain:pick(PERSONAL)}[role];
+  const legs=[]; [-.09,.09].forEach(x=>{ const p=new THREE.Group(); p.position.set(x,.82,0); const m=new THREE.Mesh(FG.leg,fmat(legC)); m.position.y=-.41; p.add(m); body.add(p); legs.push(p); });
+  const torso=new THREE.Mesh(FG.torso,fmat(role==='coat'?pick(PERSONAL):topC)); torso.position.y=1.13; body.add(torso);
+  if(role==='coat'){ const c=new THREE.Mesh(FG.coat,fmat(0xf4f4f0)); c.position.y=.97; body.add(c); }
+  if(role==='crew'||role==='plant'){ const b=new THREE.Mesh(FG.band,fmat(0xe9f2a0)); b.position.y=1.05; body.add(b); }
+  const arms=[]; [-.25,.25].forEach(x=>{ const p=new THREE.Group(); p.position.set(x,1.42,0); const m=new THREE.Mesh(FG.arm,fmat(role==='coat'?0xf4f4f0:topC)); m.position.y=-.31; p.add(m); body.add(p); arms.push(p); });
+  const head=new THREE.Mesh(FG.head,fmat(pick(SKIN))); head.position.y=1.6; body.add(head);
+  if(role==='crew'||role==='plant'){ const h=new THREE.Mesh(FG.hat,fmat(role==='crew'?0xf2c230:0xf4f4f0)); h.position.y=1.64; body.add(h); const l=new THREE.Mesh(FG.lamp,MAT.bulb); l.position.set(0,1.72,.13); body.add(l); }
+  if(role==='tech'){ const h=new THREE.Mesh(FG.hat,fmat(0xf8f8f8)); h.position.y=1.63; h.scale.set(.95,.6,.95); body.add(h); }
+  if(seated){ legs.forEach(l=>l.rotation.x=-Math.PI/2+.05); body.position.y=-.36; }
+  g.userData={legs,arms};
+  return g;
+}
+const walkers=[];
+function place(role,lv,x,z,ry,seated,seed){ const p=person(role,seed||((x*7+z*13)|0),seated); p.position.set(x,LEVELS[lv].y,z); p.rotation.y=ry||0; G[lv].add(p); return p; }
+function walker(role,lv,a,b,speed,seed,phase){ const p=person(role,seed); p.position.set(a[0],LEVELS[lv].y,a[1]); G[lv].add(p); walkers.push({p,a,b,speed:speed||1.3,t:phase||0,lv}); }
+walker('crew','l2070',[-192,-1],[-100,-1],1.3,1,.2); walker('crew','l2070',[-104,1.1],[-190,1.1],1.2,2,.6); walker('crew','l2070',[-150,.9],[-195,.9],1.1,3,.1);
+walker('tech','l2070',[-62,-.8],[36,-.8],1.2,4,.3); walker('tech','l2070',[30,.7],[-60,.7],1.35,5,.5); walker('guard','l2070',[-40,.5],[38,.5],1.1,6,.8); walker('tech','l2070',[-10,-.6],[-64,-.6],1.25,7,.1);
+walker('coat','l2200',[-112,-2],[-30,-2],1.3,8,.1); walker('coat','l2200',[-70,2.1],[20,2.1],1.25,9,.4); walker('coat','l2200',[-100,-1.3],[-40,-1.3],1.4,10,.7); walker('coat','l2200',[-30,-2.7],[28,-2.7],1.2,11,.2);
+walker('ops','l2200',[112,1.8],[-24,1.8],1.45,12,.3); walker('ops','l2200',[40,-2.2],[110,-2.2],1.35,13,.6); walker('ops','l2200',[24,.1],[116,.1],1.5,14,.9); walker('ops','l2200',[-20,2.8],[30,2.8],1.3,15,.5);
+walker('coat','l2200',[-116,.6],[-50,.6],1.15,16,.15); walker('plain','l2200',[14,41.5],[44,41.5],1,17,.3); walker('plant','plant',[-38,26],[48,26],1.2,18,.4);
+// mess: segregation without anyone deciding it
+(function(){ const s=byId.mess22; const xs=[]; for(let x=s.x0+3;x<s.x1-2;x+=4.6) xs.push(x);
+  const zs=[]; for(let z=s.z0+3.5;z<s.z1-2;z+=3.4) zs.push(z);
+  zs.forEach((z,zi)=>{ [0,1].forEach(i=>{ place('coat','l2200',xs[0]-1+i*1.2,z-.75,0,true,200+zi*5+i); place('coat','l2200',xs[0]-.4+i*1.1,z+.75,Math.PI,true,210+zi*5+i); place('ops','l2200',xs[xs.length-1]-1+i*1.2,z-.75,0,true,220+zi*5+i); place('ops','l2200',xs[xs.length-1]-.4+i*1.2,z+.75,Math.PI,true,230+zi*5+i); }); }); })();
+(function(){ const s=byId.analysis; let i=0; for(let x=s.x0+3;x<s.x1-2;x+=3.4) for(let z=s.z0+4;z<s.z1-3;z+=3.2){ if((i++)%2===0) place('coat','l2200',x,z+.7,Math.PI,true,300+i); } })();
+(function(){ const s=byId.opsfloor; let i=0; for(let t=0;t<4;t++){ const z=s.z0+6+t*3.6; for(let x=s.x0+3.5;x<s.x1-3;x+=2.2){ if((i++)%3!==1){ const p=place('ops','l2200',x,z-.05,Math.PI,true,400+i); p.position.y+=t*.35; } } } })();
+(function(){ const s=byId.admin; place('tech','l2070',s.x0+2.5,s.z0+3.7,Math.PI,true,501); place('tech','l2070',s.x0+8.5,s.z0+6.7,Math.PI,true,502); place('guard','l2070',s.x1-2,s.z1-1,Math.PI/2,false,503); })();
+place('tech','l2070',byId.mess70.x0+2.5,byId.mess70.z0+1.25,0,true,511); place('coat','l2200',byId.library.cx+1,byId.library.cz+1,Math.PI,true,512);
+place('crew','surf',-200.6,-.7,Math.PI/2,false,601); place('crew','surf',-199.4,.6,-Math.PI/2,false,602);
+const cageCrew=[]; [[.55,-.85,Math.PI/2],[.45,.9,Math.PI/2]].forEach(([x,z,r],i)=>{ const p=person('crew',610+i); p.position.set(x,0,z); p.rotation.y=r; carMain.g.add(p); cageCrew.push(p); });
+cageCrew.forEach(p=>p.visible=false);
+const escort=person('ops',700); escort.position.set(.82,0,-1.05); escort.rotation.y=Math.PI; carInner.g.add(escort); escort.visible=false;
+// the surface crew stand in the car at the collar: make them ride along
+G.surf.children.filter(o=>o.userData&&o.userData.legs&&Math.abs(o.position.x+200)<1).forEach(o=>o.visible=false);
+cageCrew.forEach(p=>p.visible=true);
+
+/* =========================================================
+   NAVIGATION GRAPH
+   ========================================================= */
+const nodes=[], adj=[];
+function addNode(x,z,lv,space,extra){ nodes.push(Object.assign({x,z,lv,space},extra||{})); adj.push([]); return nodes.length-1; }
+function link(a,b,kind,data){ const w=kind==='cage'?data.w:Math.hypot(nodes[a].x-nodes[b].x,nodes[a].z-nodes[b].z); adj[a].push({to:b,w,kind:kind||'walk',data}); adj[b].push({to:a,w,kind:kind||'walk',data}); }
+spaces.forEach(s=>{ s.nodes=[]; const cx=s.view?s.view.at[0]:s.cx, cz=s.view?s.view.at[1]:s.cz; s.center=addNode(cx,cz,s.lv,s.id,{center:true}); s.nodes.push(s.center); if(s.cage){ s.cageNode=addNode(s.cage.x,s.cage.z,s.lv,s.id,{cage:s.cage.shaft}); s.nodes.push(s.cageNode);} });
+conns.forEach(c=>{ if(c.bad||!c.passable) return; const A=byId[c.a],B=byId[c.b]; const a=addNode(c.pA[0],c.pA[1],A.lv,A.id,{conn:c}), b=addNode(c.pB[0],c.pB[1],B.lv,B.id,{conn:c}); link(a,b,'walk',{conn:c}); A.nodes.push(a); B.nodes.push(b); });
+spaces.forEach(s=>{ if(s.hub){ s.nodes.forEach(n=>{ if(n!==s.center) link(n,s.center); }); } else { for(let i=0;i<s.nodes.length;i++) for(let j=i+1;j<s.nodes.length;j++) link(s.nodes[i],s.nodes[j]); } });
+link(byId.collar.cageNode,byId.station.cageNode,'cage',{shaft:'main',w:30});
+const INNER=['lobby70','lobby22','lobbyP','lobby23'];
+for(let i=0;i<INNER.length-1;i++) link(byId[INNER[i]].cageNode,byId[INNER[i+1]].cageNode,'cage',{shaft:'inner',w:10});
+
+function spaceAt(lv,x,z){ let best=null; for(const s of spaces){ if(s.lv!==lv) continue; if(x>=s.x0-1e-3&&x<=s.x1+1e-3&&z>=s.z0-1e-3&&z<=s.z1+1e-3){ if(!best||(s.x1-s.x0)*(s.z1-s.z0)<(best.x1-best.x0)*(best.z1-best.z0)) best=s; } } return best; }
+function route(fromPos,fromLv,targetId){
+  const N=nodes.length, start=N; const dist=new Float64Array(N+1).fill(Infinity), prev=new Int32Array(N+1).fill(-1), pkind=new Array(N+1), done=new Uint8Array(N+1);
+  const cs=spaceAt(fromLv,fromPos[0],fromPos[1]);
+  const startEdges=[]; (cs?(cs.hub?[cs.center]:cs.nodes):nodes.map((n,i)=>i).filter(i=>nodes[i].lv===fromLv)).forEach(i=>startEdges.push({to:i,w:Math.hypot(nodes[i].x-fromPos[0],nodes[i].z-fromPos[1]),kind:'walk'}));
+  const goal=byId[targetId].center; dist[start]=0;
+  for(;;){ let u=-1,bd=Infinity; for(let i=0;i<=N;i++) if(!done[i]&&dist[i]<bd){bd=dist[i];u=i;} if(u<0||u===goal) break; done[u]=1;
+    const E=u===start?startEdges:adj[u]; for(const e of E){ const nd=dist[u]+e.w; if(nd<dist[e.to]){ dist[e.to]=nd; prev[e.to]=u; pkind[e.to]=e; } } }
+  if(!isFinite(dist[goal])) return null;
+  const path=[]; for(let v=goal;v!==-1;v=prev[v]) path.push(v); path.reverse();
+  return {path,pkind};
+}
+function buildSegments(r,fromPos,fromLv,targetId){
+  const segs=[]; const t=byId[targetId];
+  const P=i=>{ const n=nodes[i]; return [n.x,LEVELS[n.lv].y+EYE,n.z]; };
+  let cur=[[fromPos[0],LEVELS[fromLv].y+EYE,fromPos[1]]];
+  const flush=()=>{ if(cur.length>1) segs.push({type:'walk',pts:cur}); };
+  for(let k=1;k<r.path.length;k++){
+    const n=r.path[k], e=r.pkind[n];
+    if(e&&e.kind==='cage'){ flush(); segs.push({type:'cage',from:r.path[k-1],to:n,data:e.data}); cur=[P(n)]; continue; }
+    cur.push(P(n));
+    const sp=byId[nodes[n].space];
+    if(sp&&sp.hub&&nodes[n].center&&k<r.path.length-1){ flush(); const outC=nodes[r.path[k+1]].conn; const vd=sp.gaps.map(g=>g.conn.door).filter(Boolean); const exit=outC&&outC.door; segs.push({type:'hold',dur:3.0,mantrap:{exit,enter:vd.find(d=>d!==exit)}}); cur=[P(n)]; }
+  }
+  // final framing
+  let look=null, pitch=t.pitch||0;
+  if(t.view){ const L=t.view.look; look=[L[0],L[1]]; pitch=t.view.pitch||pitch; }
+  else if(t.kind!=='corridor'&&cur.length>=2){
+    const c=cur[cur.length-1], d=cur[cur.length-2]; const dx=c[0]-d[0], dz=c[2]-d[2], L=Math.hypot(dx,dz);
+    if(L>.5){ const big=Math.max(t.x1-t.x0,t.z1-t.z0); const k=big>14?Math.min(L*.35,2.8):Math.min(L*.5,2.2); cur[cur.length-1]=[d[0]+dx/L*k,c[1],d[2]+dz/L*k]; look=[c[0]+dx/L*3,c[2]+dz/L*3]; if(!t.pitch) pitch=-.05; }
+  }
+  flush();
+  if(!segs.length) segs.push({type:'walk',pts:[cur[0],cur[0]]});
+  return {segs,look,pitch};
+}
+
+/* =========================================================
+   STATE, CAMERA, TRAVEL
+   ========================================================= */
+const S0=byId.yard.view;
+const st={
+  pos:new THREE.Vector3(S0.at[0],LEVELS.surf.y+EYE,S0.at[1]), lv:'surf', yaw:0, pitch:S0.pitch, tYaw:0, tPitch:S0.pitch, offYaw:0, offPitch:0,
+  trip:null, target:'yard', here:'yard', speed:1, clock:620, clockRate:1, runDay:false, hold:false, shake:0, cageT:0, inCage:null,
+  blastT:12, beachT:0, walking:false, keys:{}, lastSpace:null, arrivedAt:0
+};
+st.yaw=st.tYaw=Math.atan2(-(S0.look[0]-S0.at[0]),-(S0.look[1]-S0.at[1]));
+const angDiff=(a,b)=>{ let d=b-a; while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI; return d; };
+
+function goTo(id,fromTour){
+  if(!byId[id]) return;
+  if(st.trip&&st.trip.segs[st.trip.i]&&st.trip.segs[st.trip.i].type==='cage') return; // no changing course mid-ride
+  const r=route([st.pos.x,st.pos.z],st.lv,id); if(!r) return;
+  const b=buildSegments(r,[st.pos.x,st.pos.z],st.lv,id);
+  st.trip={segs:b.segs,i:0,look:b.look,pitch:b.pitch,target:id,u:0,t:0};
+  st.target=id; st.walking=false;
+  if(!fromTour){ const i=Tour.list.indexOf(id); if(i>=0) Tour.i=i; }
+  renderEnroute(id); updateRoute();
+}
+function startSeg(seg){
+  if(seg.type==='walk'){
+    const pts=[]; seg.pts.forEach(p=>{ const v=new THREE.Vector3(p[0],p[1],p[2]); if(!pts.length||pts[pts.length-1].distanceTo(v)>.25) pts.push(v); });
+    if(pts.length<2){ seg.skip=true; return; }
+    seg.curve=pts.length===2?new THREE.LineCurve3(pts[0],pts[1]):new THREE.CatmullRomCurve3(pts,false,'catmullrom',.2); seg.L=seg.curve.getLength(); seg.u=0;
+  } else if(seg.type==='cage'){
+    const a=nodes[seg.from], b=nodes[seg.to]; seg.y0=LEVELS[a.lv].y; seg.y1=LEVELS[b.lv].y; seg.car=seg.data.shaft==='main'?carMain:carInner;
+    st.tYaw=seg.data.shaft==='main'?(seg.y1<seg.y0?-Math.PI/2:Math.PI/2):0; st.offYaw=0; st.offPitch=0;
+    seg.dur=seg.data.shaft==='main'?(RM?3:10):(RM?1.5:Math.max(2.2,Math.abs(seg.y1-seg.y0)*.14)); seg.t=0; seg.car.g.position.y=seg.y0; seg.car.level=a.lv;
+    st.inCage=seg; Sound.bell();
+    if(seg.data.shaft==='main'&&seg.y1<seg.y0){ cageCrew.forEach(p=>p.visible=true); showCaption('Five to ten minutes of descent, shared with mine crew going somewhere else entirely.'); }
+    if(seg.data.shaft==='inner'&&b.lv==='l2320'){ escort.visible=true; showCaption('Escorted access. An Operations officer presses the stop for you, rides down, and does not get out.'); }
+    else if(seg.data.shaft==='inner') escort.visible=escort.visible&&a.lv==='l2320';
+  } else if(seg.type==='hold'){ seg.t=0; }
+}
+function stepTrip(dt){
+  const tr=st.trip; if(!tr) return;
+  let seg=tr.segs[tr.i];
+  if(!seg.started){ seg.started=true; startSeg(seg); }
+  if(seg.skip){ tr.i++; if(tr.i>=tr.segs.length) return arrive(); return; }
+  const v=6.2*st.speed;
+  if(seg.type==='walk'){
+    seg.u=Math.min(1,seg.u+v*dt/Math.max(seg.L,.01));
+    const p=seg.curve.getPointAt(seg.u); st.pos.copy(p);
+    const ahead=seg.curve.getPointAt(Math.min(1,seg.u+2.2/Math.max(seg.L,.01)));
+    const dx=ahead.x-p.x, dz=ahead.z-p.z; if(dx*dx+dz*dz>.01){ st.tYaw=Math.atan2(-dx,-dz); } st.tPitch=0;
+    if(seg.u>=1){ tr.i++; if(tr.i>=tr.segs.length) return arrive(); }
+  } else if(seg.type==='cage'){
+    seg.t=Math.min(1,seg.t+dt/seg.dur); const e=seg.t<.5?2*seg.t*seg.t:1-Math.pow(-2*seg.t+2,2)/2;
+    const y=seg.y0+(seg.y1-seg.y0)*e; st.pos.y=y+EYE; seg.car.g.position.y=y; st.tPitch=0;
+    if(seg.t>=1){ seg.car.level=nodes[seg.to].lv; st.lv=nodes[seg.to].lv; st.inCage=null; Sound.bell(); tr.i++; if(tr.i>=tr.segs.length) return arrive(); }
+  } else if(seg.type==='hold'){
+    seg.t+=dt*Math.max(1,st.speed*.7);
+    const m=seg.mantrap; if(m){ if(m.enter) m.enter.override=0; if(m.exit) m.exit.override=seg.t>1.6?1:0; }
+    if(seg.t>=seg.dur){ if(m){ if(m.enter) m.enter.override=null; if(m.exit) m.exit.override=null; } tr.i++; if(tr.i>=tr.segs.length) return arrive(); }
+  }
+}
+function arrive(){
+  const tr=st.trip; st.trip=null;
+  if(tr.look){ st.tYaw=Math.atan2(-(tr.look[0]-st.pos.x),-(tr.look[1]-st.pos.z)); }
+  st.tPitch=tr.pitch||0; st.offYaw*=.3; st.offPitch*=.3;
+  st.here=tr.target; st.arrivedAt=performance.now(); renderHere(byId[tr.target]);
+  if(Tour.playing){ const s=byId[tr.target]; const len=(s.note||'').length+(s.craft||'').length*.5; Tour.dwell=Math.min(15,Math.max(6.5,len/30))/Math.sqrt(st.speed); }
+  updateRoute(); updateCagePanel();
+}
+
+/* =========================================================
+   LIGHT: circadian + zone profiles
+   ========================================================= */
+function kelvin(k){ k/=100; let r,g,b; if(k<=66){ r=255; g=99.4708*Math.log(k)-161.1196; b=k<=19?0:138.5177*Math.log(k-10)-305.0448; } else { r=329.6987*Math.pow(k-60,-.1332); g=288.1222*Math.pow(k-60,-.0755); b=255; }
+  const c=v=>Math.min(255,Math.max(0,v))/255; return new THREE.Color(c(r),c(g),c(b)); }
+const CIRC=[[0,2300,.32],[5,2300,.32],[7,7200,1],[16,7200,1],[19.5,2900,.82],[22,2300,.32],[24,2300,.32]];
+function circ(h){ for(let i=0;i<CIRC.length-1;i++){ const a=CIRC[i],b=CIRC[i+1]; if(h>=a[0]&&h<=b[0]){ const t=(h-a[0])/(b[0]-a[0]); const k=a[1]+(b[1]-a[1])*t, d=a[2]+(b[2]-a[2])*t;
+  const phase=h<5||h>=22?'Night · residential and circulation dimmed':h<7?'Morning · warming up to the working day':h<16?'Working day · cold blue-white':h<19.5?'Evening · warming toward amber':'Winding down · dimming';
+  return {k,dim:d,col:kelvin(k),phase}; } } return {k:2300,dim:.32,col:kelvin(2300),phase:'Night'}; }
+const SKYKEYS=[[0,'#0a1330','#1a2446','#5a6c9c',.25],[5,'#0d1733','#22305a','#6a78a8',.3],[7,'#5a8fcf','#f0c9a0','#fff0d0',.9],[9,'#4f8fd6','#bcd8ef','#fff4de',1],[16,'#4f8fd6','#bcd8ef','#fff4de',1],[18.5,'#39508c','#eaa272','#ffb070',.85],[20.5,'#1a2550','#6d4a6a','#f08a60',.5],[22,'#0a1330','#1a2446','#5a6c9c',.25],[24,'#0a1330','#1a2446','#5a6c9c',.25]];
+function skyAt(h){ for(let i=0;i<SKYKEYS.length-1;i++){ const a=SKYKEYS[i],b=SKYKEYS[i+1]; if(h>=a[0]&&h<=b[0]){ const t=(h-a[0])/(b[0]-a[0]);
+  return {top:new THREE.Color(a[1]).lerp(new THREE.Color(b[1]),t),bot:new THREE.Color(a[2]).lerp(new THREE.Color(b[2]),t),sun:new THREE.Color(a[3]).lerp(new THREE.Color(b[3]),t),i:a[4]+(b[4]-a[4])*t}; } } return skyAt(0); }
+
+const hemi=new THREE.HemisphereLight(0xffffff,0x888888,1); scene.add(hemi);
+const camLight=new THREE.PointLight(0xffffff,.4,16,2); cam.add(camLight); camLight.position.set(0,.4,-.5);
+const capLamp=new THREE.SpotLight(0xfff0d8,0,34,.42,.55,1.3); cam.add(capLamp); capLamp.position.set(0,.1,0); const capT=new THREE.Object3D(); capT.position.set(0,-.3,-5); cam.add(capT); capLamp.target=capT;
+const sun=new THREE.DirectionalLight(0xfff2dc,0); sun.position.set(-150,300,120); sun.target.position.set(-200,120,0); scene.add(sun); scene.add(sun.target);
+const bulbPool=[0,1,2].map(()=>{ const l=new THREE.PointLight(0xffc27a,0,12,1.6); scene.add(l); return l; });
+
+const LIGHT={cur:null};
+function profile(s,h){
+  const c=circ(h); const P={hemiC:c.col.clone(),hemiG:c.col.clone().multiplyScalar(.55),hemiI:1,camI:.35,camC:new THREE.Color(0xffffff),fog:new THREE.Color(0xdedbd4),near:40,far:160,exp:1,cap:0,bulbs:0,sun:0,glare:0,sky:1};
+  const L=s?s.light:'shaft';
+  const fogFrom=(base,I)=>new THREE.Color(base).multiply(c.col).multiplyScalar(I);
+  switch(L){
+    case 'surface':{ const sk=skyAt(h); const day=Math.max(0,Math.min(1,(sk.i-.25)/.75)); P.hemiC=sk.top.clone().lerp(new THREE.Color(0xffffff),.5); P.hemiG=new THREE.Color(0x4a4436); P.hemiI=.25+.8*day; P.fog=sk.bot.clone(); P.near=80; P.far=460; P.sun=1.4*day; P.camI=.1; P.exp=1; break; }
+    case 'rock': Object.assign(P,{hemiC:new THREE.Color(0x7a6650),hemiG:new THREE.Color(0x1a140f),hemiI:.22,camI:.35,camC:new THREE.Color(0xffd9a8),fog:new THREE.Color(0x160f0a),near:3,far:34,cap:1.7,bulbs:1.3,exp:1.15}); break;
+    case 'drys':{ const k=kelvin(5600); Object.assign(P,{hemiC:k,hemiG:k.clone().multiplyScalar(.6),hemiI:1.05,fog:new THREE.Color(0xaab2b4),near:10,far:55,camI:.3}); break; }
+    case 'clean': P.hemiI=.8; P.hemiG=c.col.clone().multiplyScalar(.3); P.fog=fogFrom(0xd9d6cf,.95); P.far=240; P.exp=.92; break;
+    case 'circ': P.hemiI=.3+.52*c.dim; P.hemiG=c.col.clone().multiplyScalar(.3); P.fog=fogFrom(0xd9d6cf,.3+.62*c.dim); P.camI=.3; P.far=240; P.exp=.92; break;
+    case 'res':{ const w=c.col.clone().lerp(kelvin(2800),.35); P.hemiC=w; P.hemiG=w.clone().multiplyScalar(.55); P.hemiI=.3+.62*c.dim; P.fog=new THREE.Color(0xe8dccb).multiply(w).multiplyScalar(.3+.6*c.dim); P.near=20; P.far=90; break; }
+    case 'ops': P.hemiI=.78; P.hemiG=c.col.clone().multiplyScalar(.28); P.fog=fogFrom(0x8e8c86,.85); P.far=200; break;
+    case 'garden': Object.assign(P,{hemiC:new THREE.Color(0xffe9ff),hemiG:new THREE.Color(0x44603a),hemiI:1.05,fog:new THREE.Color(0xc9d6b8),near:4,far:36,camI:.4}); break;
+    case 'beach': Object.assign(P,{hemiC:new THREE.Color(0xfffcf0),hemiG:new THREE.Color(0xfff3dd),hemiI:2.6,fog:new THREE.Color(0xfffaf0),near:4,far:22,exp:2.6,glare:1,camI:1}); break;
+    case 'sim': Object.assign(P,{hemiC:new THREE.Color(0x401010),hemiG:new THREE.Color(0x080404),hemiI:.18,fog:new THREE.Color(0x050303),near:3,far:26,camI:.08,camC:new THREE.Color(0xff6655)}); break;
+    case 'threat': Object.assign(P,{hemiC:kelvin(9500),hemiG:new THREE.Color(0x4a5a6a),hemiI:.95,fog:new THREE.Color(0xd4e2ee),near:6,far:40}); break;
+    case 'plant':{ const k=kelvin(2500); Object.assign(P,{hemiC:k,hemiG:new THREE.Color(0x2a2620),hemiI:.72,fog:new THREE.Color(0x3d3a33),near:8,far:70,camI:.3,camC:k}); break; }
+    case 'deep': P.hemiI=.3+.22*c.dim; P.hemiG=c.col.clone().multiplyScalar(.25); P.fog=new THREE.Color(0x070707); P.near=5; P.far=42; P.camI=.18; P.exp=.95; break;
+    case 'hard':{ const k=kelvin(5200); Object.assign(P,{hemiC:k,hemiG:k.clone().multiplyScalar(.5),hemiI:.85,fog:new THREE.Color(0x8e9295),near:8,far:60}); break; }
+    case 'server': Object.assign(P,{hemiC:kelvin(6500),hemiG:new THREE.Color(0x202830),hemiI:.55,fog:new THREE.Color(0x151b20),near:5,far:34}); break;
+    default: Object.assign(P,{hemiC:new THREE.Color(0x6a5a48),hemiG:new THREE.Color(0x100c09),hemiI:.12,fog:new THREE.Color(0x0c0907),near:2,far:24,cap:1.6,camI:.25,camC:new THREE.Color(0xffd9a8)});
+  }
+  if(s&&s.style==='rock'){ P.cap=1.7; }
+  return P;
+}
+function lerpProfile(a,b,t){ const o={}; for(const k in b){ if(b[k] instanceof THREE.Color) o[k]=a[k].clone().lerp(b[k],t); else o[k]=a[k]+(b[k]-a[k])*t; } return o; }
+function applyClockMaterials(h){
+  const c=circ(h);
+  panelWork.color.copy(c.col); panelOps.color.copy(c.col).multiplyScalar(.95);
+  panelCirc.color.copy(c.col).multiplyScalar(.35+.65*c.dim); panelRes.color.copy(c.col).lerp(kelvin(2700),.4).multiplyScalar(.3+.7*c.dim);
+  panelDeep.color.copy(c.col).multiplyScalar(.28+.22*c.dim);
+  const sk=skyAt(h); skyUniforms.uTop.value.copy(sk.top); skyUniforms.uBot.value.copy(sk.bot); skyUniforms.uSun.value.copy(sk.sun); skyUniforms.uI.value=.45+.6*c.dim;
+  domeUniforms.uTop.value.copy(sk.top); domeUniforms.uHor.value.copy(sk.bot); domeUniforms.uSunC.value.copy(sk.sun); domeUniforms.uStars.value=1-Math.min(1,sk.i*1.4);
+  const el=Math.sin((h-6)/24*Math.PI*2); domeUniforms.uSunDir.value.set(-Math.cos((h-6)/24*Math.PI*2)*.8,el,.35);
+  sun.position.set(-200-Math.cos((h-6)/24*Math.PI*2)*200,120+Math.max(.05,el)*300,120);
+}
+
+/* =========================================================
+   SOUND (optional; starts only from the button)
+   ========================================================= */
+const Sound={ctx:null,on:false,g:{},plantDownT:0,
+  init(){ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return false; const ctx=this.ctx=new AC(); const master=ctx.createGain(); master.gain.value=.8; master.connect(ctx.destination); this.master=master;
+    const noise=ctx.createBuffer(1,ctx.sampleRate*4,ctx.sampleRate), d=noise.getChannelData(0); let last=0; for(let i=0;i<d.length;i++){ const w=Math.random()*2-1; last=(last+.02*w)/1.02; d[i]=last*3.2; }
+    const white=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate), wd=white.getChannelData(0); for(let i=0;i<wd.length;i++) wd[i]=Math.random()*2-1;
+    this.noise=noise; this.white=white;
+    const mk=(buf,type,freq,gain)=>{ const s=ctx.createBufferSource(); s.buffer=buf; s.loop=true; const f=ctx.createBiquadFilter(); f.type=type; f.frequency.value=freq; const g=ctx.createGain(); g.gain.value=gain; s.connect(f); f.connect(g); g.connect(master); s.start(); return g; };
+    this.g.thrum=mk(noise,'lowpass',170,0); this.g.hiss=mk(white,'highpass',2500,0); this.g.rumble=mk(noise,'lowpass',70,0);
+    const o=ctx.createOscillator(); o.frequency.value=58; const og=ctx.createGain(); og.gain.value=0; o.connect(og); og.connect(master); o.start(); this.g.hum=og;
+    const o2=ctx.createOscillator(); o2.type='triangle'; o2.frequency.value=3100; const og2=ctx.createGain(); og2.gain.value=0; o2.connect(og2); og2.connect(master); o2.start(); this.g.whine=og2;
+    return true; },
+  toggle(){ if(!this.ctx&&!this.init()) return; this.on=!this.on; if(this.on) this.ctx.resume(); else this.ctx.suspend(); },
+  levels(L){ const m={surface:[.05,0,0,.0,0],rock:[.55,0,.35,.03,0],shaft:[.45,0,.3,.03,0],drys:[.25,.1,0,.02,0],clean:[.22,0,0,.025,0],circ:[.2,0,0,.02,0],ops:[.3,0,0,.03,0],garden:[.1,.02,0,.01,0],beach:[.08,0,0,.01,0],sim:[.04,0,0,0,0],threat:[.26,0,0,.03,0],plant:[.85,0,.25,.06,0],deep:[.2,0,0,.02,0],hard:[.3,0,0,.03,0],server:[.4,0,0,.03,.004],res:[.14,0,0,.015,0]}; return m[L]||m.shaft; },
+  update(dt,L){ if(!this.on||!this.ctx) return; const v=this.levels(L); const down=this.plantDownT>0?Math.max(0,1-Math.min(1,this.plantDownT>7?(9-this.plantDownT)/2:1)):1; if(this.plantDownT>0) this.plantDownT-=dt;
+    const t=this.ctx.currentTime; const set=(g,x)=>g.gain.setTargetAtTime(x,t,.4);
+    set(this.g.thrum,v[0]*down); set(this.g.hiss,v[1]); set(this.g.rumble,v[2]*down); set(this.g.hum,v[3]*down); set(this.g.whine,v[4]*down); },
+  blast(){ if(!this.on||!this.ctx) return; const ctx=this.ctx, s=ctx.createBufferSource(); s.buffer=this.noise; const f=ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=90; const g=ctx.createGain(); const t=ctx.currentTime; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(1.4,t+.03); g.gain.exponentialRampToValueAtTime(.001,t+2.2); s.connect(f); f.connect(g); g.connect(this.master); s.start(t); s.stop(t+2.4); },
+  bell(){ if(!this.on||!this.ctx) return; const ctx=this.ctx, t=ctx.currentTime; [0,.35].forEach(d=>{ const o=ctx.createOscillator(); o.frequency.value=880; const g=ctx.createGain(); g.gain.setValueAtTime(0,t+d); g.gain.linearRampToValueAtTime(.12,t+d+.01); g.gain.exponentialRampToValueAtTime(.001,t+d+.6); o.connect(g); g.connect(this.master); o.start(t+d); o.stop(t+d+.7); }); }
+};
+
+/* =========================================================
+   UI
+   ========================================================= */
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtClock=m=>{ m=((m%1440)+1440)%1440; const h=Math.floor(m/60), mm=Math.floor(m%60); return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0'); };
+const TIER={surf:'Public',l2070:'Tier 3',l2200:'Tier 2',plant:'Below the seam',l2320:'Tier 1'};
+function tierFor(s){ if(!s) return '—'; if(s.id==='vest') return 'Tier 3 → 2'; if(s.id==='lobby70') return 'Tier 2'; if(s.zone==='mine'||s.zone==='drys') return 'Mine · Tier 3'; return TIER[s.lv]; }
+function depthOf(y){ const f=y-EYE; const K=[[120,0],[0,2070],[-39,2200],[-57,2260],[-75,2320]]; if(f>=120) return 0; for(let i=0;i<K.length-1;i++){ const a=K[i],b=K[i+1]; if(f<=a[0]&&f>=b[0]) return a[1]+(b[1]-a[1])*(a[0]-f)/(a[0]-b[0]); } return 2320; }
+function rockOf(d){ if(d<5) return null; if(d<=2070) return 10+32*d/2070; return 42+(d-2070)*.025; }
+function areaLabel(s){ return ZONES[s.zone].area; }
+
+let lastPlate='';
+function updatePlate(){
+  const s=spaceAt(st.lv,st.pos.x,st.pos.z);
+  const d=depthOf(st.pos.y);
+  let name,off,eyebrow,zone;
+  if(st.inCage){ const main=st.inCage.data.shaft==='main'; name=main?'The cage':'Internal cage'; off=(st.inCage.y1<st.inCage.y0?'Descending':'Ascending')+' · '+Math.round(d).toLocaleString('en-GB')+' m'; eyebrow=main?'Main shaft':'Behind the seam'; zone=main?'mine':'hard'; }
+  else if(s){ name=s.name; off=s.off; eyebrow=LEVELS[s.lv].name+' · '+areaLabel(s); zone=s.zone; }
+  else { name='—'; off=''; eyebrow=LEVELS[st.lv].name; zone='hard'; }
+  const key=name+'|'+off+'|'+eyebrow;
+  if(key!==lastPlate){ lastPlate=key; $('#pName').textContent=name; $('#pOff').textContent=off; $('#pEyebrow').textContent=eyebrow; $('#pSw').style.background=ZONES[zone].floor; $('#pFloor').textContent='Floor: '+ZONES[zone].label; }
+  $('#rDepth').textContent=Math.round(d).toLocaleString('en-GB')+' m';
+  const rk=rockOf(d); $('#rRock').textContent=rk==null?'—':'≈'+Math.round(rk)+' °C';
+  $('#rClock').textContent=fmtClock(st.clock);
+  $('#rTier').textContent=st.inCage?'—':tierFor(s);
+  return s;
+}
+function chipsFor(s){ const c=[`<span class="chip">${esc(LEVELS[s.lv].name)}</span>`,`<span class="chip">${esc(tierFor(s))}</span>`,`<span class="chip"><i style="display:inline-block;width:10px;height:8px;background:${ZONES[s.zone].floor};margin-right:5px;border-radius:1px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)"></i>${esc(ZONES[s.zone].label)}</span>`]; if(s.interp) c.push('<span class="chip interp">Includes interpretation</span>'); return '<div class="chips">'+c.join('')+'</div>'; }
+function hearFor(s){ if(s.light==='rock'||s.zone==='mine') return HEAR.mine; if(s.light==='surface') return HEAR.surface; if(s.light==='drys') return HEAR.drys; if(s.light==='garden') return HEAR.garden; if(s.light==='plant') return HEAR.plant; if(s.zone==='deep') return HEAR.deep; if(s.light==='sim') return HEAR.sim; return HEAR.clean; }
+function renderHere(s){
+  const tellTxt=(s.tellIds||[]).map(id=>{ const t=TELLS.find(x=>x[1]===id); return t?t[0]:''; }).filter(Boolean);
+  $('#tab-here').innerHTML=`${chipsFor(s)}
+    <h2 class="here-title">${esc(s.name)}</h2><div class="here-off">${esc(s.off||'')}</div>
+    <p class="lede">${esc(s.note||'')}</p>
+    <dl class="facts">${s.see?`<dt>You see</dt><dd>${esc(s.see)}</dd>`:''}<dt>You hear</dt><dd>${esc(hearFor(s))}</dd><dt>Dress</dt><dd>${esc(DRESS[s.zone])}</dd>${s.scene?`<dt>Scene use</dt><dd>${esc(s.scene)}</dd>`:''}${s.scenes?`<dt>Set here</dt><dd>${esc(s.scenes)}</dd>`:''}</dl>
+    ${s.craft?`<div class="note-block craft"><h4>Craft note</h4><p>${esc(s.craft)}</p></div>`:''}
+    ${tellTxt.length?`<div class="note-block tell"><h4>The Tells</h4><p>${esc(tellTxt.join(' '))}</p></div>`:''}
+    ${s.interp?`<div class="note-block interp"><h4>Interpretation</h4><p>${esc(s.interp)}</p></div>`:''}
+    ${s.src?`<p class="src">Source: ${esc(s.src)}</p>`:''}`;
+  renderLightSys();
+}
+function renderEnroute(id){ const s=byId[id]; const box=$('#tab-here'); const cur=box.querySelector('.enroute'); const html=`<div class="enroute">Walking to ${esc(s.name)} · ${esc(LEVELS[s.lv].name)}</div>`; if(cur) cur.outerHTML=html; else box.insertAdjacentHTML('afterbegin',html); }
+
+/* light tab */
+function renderLightSys(){
+  const s=byId[st.here]; const c=circ(st.clock/60);
+  const circOn=s&&!['rock','surface','plant','drys','sim','beach'].includes(s.light);
+  const sky=s&&s.ceil==='sky';
+  const beach=s&&s.light==='beach';
+  const lightHere={rock:'Cap lamps and a string of bulbs. No circadian system: this is the working mine.',surface:'Real sky. Enjoy it: there is none below the surface building.',drys:'Flat, cold fluorescent light.',plant:'Industrial fixtures at a fixed warm colour. Nobody tunes the light for plant crew.',sim:'Total darkness on demand, with a red run light.',deep:'Lower light than anywhere else, on the same circadian cycle.',beach:'Full-spectrum panels, floor to ceiling. Bright enough that you close your eyes.',garden:'Grow lights over the racks under an artificial sky.',threat:'Cold, clinical light for cold storage.',ops:'Tuned, but never fully dark: the Operations Floor runs all night.',res:'Warmer, and dimmed overnight.',circ:'Circulation lighting, dimmed overnight.',clean:'Working light, tuned across the day but never dimmed.',hard:'Plain, even light.',server:'Low, cool light.'};
+  $('#sys').innerHTML=`
+    <article><h4>In this space</h4><span class="state on">${esc(s?s.name:'—')}</span><p>${esc(s?lightHere[s.light]||'':'')}</p></article>
+    <article><h4>Circadian tuning</h4><span class="state ${circOn?'on':''}">${circOn?'Active here':'Not here'}</span><p>All general lighting shifts colour temperature across 24 hours: cold blue-white through the working day, warming toward amber in the evening, dimming overnight in residential and circulation spaces. It is the facility’s attempt to keep several hundred people’s biology from unravelling.</p></article>
+    <article><h4>Artificial skylights</h4><span class="state ${sky?'on':''}">${sky?'Overhead':'Not here'}</span><p>Ceiling luminaires engineered to read as sky: a diffuse blue field with a defined brighter source at an angle, so the eye reports sky before the mind corrects it. In the mess, the Garden, the Spine and the residential lounges. They work, which is the unsettling part. You stop noticing. Then you look up on purpose, and remember.</p></article>
+    <article><h4>The Beach</h4><span class="state ${beach?'on':''}">${beach?'You are here':'Central Medical'}</span><p>Light-therapy rooms, medically mandated and logged. <button type="button" class="btn" data-go="beach" style="margin-top:6px">Go to the Beach</button></p></article>
+    <article><h4>Supplementation</h4><span class="state">Everywhere</span><p>Vitamin D issued as standard occupational health. Unremarked, universal, and in the mess like salt.</p></article>
+    <article><h4>It doesn’t fully work</h4><span class="state">Locked</span><p>People who stay below for long stretches still drift: meals at odd hours, sleep untethered, a slow loss of which day it is. The systems reduce the damage. They do not prevent it.</p></article>`;
+  $('#kTxt').textContent=c.phase+' · '+Math.round(c.k/100)*100+' K';
+}
+function renderDayBar(){ const stops=[]; for(let m=0;m<=1440;m+=60){ const c=circ(m/60).col.clone().multiplyScalar(.35+.65*circ(m/60).dim); stops.push(`#${c.getHexString()} ${(m/1440*100).toFixed(1)}%`);} $('#daybar').style.background=`linear-gradient(90deg,${stops.join(',')})`; }
+
+/* map tab */
+let planLv='l2200';
+function renderPlan(lv){
+  planLv=lv; const S=spaces.filter(s=>s.lv===lv&&s.style!=='none');
+  let x0=Infinity,z0=Infinity,x1=-Infinity,z1=-Infinity; S.forEach(s=>{x0=Math.min(x0,s.x0);z0=Math.min(z0,s.z0);x1=Math.max(x1,s.x1);z1=Math.max(z1,s.z1);});
+  if(lv==='surf'){ x0=-216;x1=-194;z0=-8;z1=8; }
+  const pad=3; x0-=pad;z0-=pad;x1+=pad;z1+=pad; const W=x1-x0,H=z1-z0; const sc=Math.max(3,Math.min(10,640/W)); const vw=W*sc, vh=H*sc;
+  let out=`<svg viewBox="0 0 ${vw.toFixed(1)} ${vh.toFixed(1)}" role="img" aria-label="Plan of ${esc(LEVELS[lv].name)}" style="min-width:${Math.min(vw,640).toFixed(0)}px">`;
+  S.forEach(s=>{ const fill=ZONES[s.zone].floor; const dark=['east','deep','mine','plant'].includes(s.zone); out+=`<g data-go="${s.id}" tabindex="0"><title>${esc(s.name)} · ${esc(s.off||'')}</title><rect x="${((s.x0-x0)*sc).toFixed(1)}" y="${((s.z0-z0)*sc).toFixed(1)}" width="${((s.x1-s.x0)*sc).toFixed(1)}" height="${((s.z1-s.z0)*sc).toFixed(1)}" fill="${fill}" stroke="#0B0D0F" stroke-width="1.2"/>`;
+    const w=(s.x1-s.x0)*sc, h=(s.z1-s.z0)*sc; const nm=s.short||s.name.replace(/^The /,''); const fs=Math.min(11,Math.max(6.5,Math.min(w/(nm.length*.62),h*.45)));
+    if(w>22&&h>12&&s.kind!=='corridor'||s.id.startsWith('spine')) out+=`<text x="${((s.cx-x0)*sc).toFixed(1)}" y="${((s.cz-z0)*sc+fs*.35).toFixed(1)}" font-family="Martian Mono, monospace" font-size="${fs.toFixed(1)}" text-anchor="middle" fill="${dark?'#E8E2D6':'#1a1c1e'}" pointer-events="none">${esc(nm.length*fs*.62>w-4?nm.slice(0,Math.max(3,Math.floor((w-4)/(fs*.62))-1))+'…':nm)}</text>`;
+    out+='</g>'; });
+  conns.filter(c=>!c.bad&&byId[c.a].lv===lv&&c.type!=='open').forEach(c=>{ const cx=(c.center[0]-x0)*sc, cz=(c.center[1]-z0)*sc; out+=`<circle cx="${cx.toFixed(1)}" cy="${cz.toFixed(1)}" r="${c.type==='seam'?3.2:1.6}" fill="${c.type==='seam'?'#E2A445':'#0B0D0F'}"/>`; });
+  if(lv==='l2070'||lv==='l2200'||lv==='plant'||lv==='l2320'){ const cx=(5.5-x0)*sc, cz=(36-z0)*sc; out+=`<rect x="${(cx-1.5*sc).toFixed(1)}" y="${(cz-2*sc).toFixed(1)}" width="${(3*sc).toFixed(1)}" height="${(4*sc).toFixed(1)}" fill="none" stroke="#9CC6E8" stroke-dasharray="2 2"/>`; }
+  out+=`<g id="me"><path d="M0 0 L-9 -22 L9 -22 Z" fill="rgba(156,198,232,.35)"/><circle r="4.5" fill="#9CC6E8" stroke="#0B0D0F" stroke-width="1.5"/></g></svg>`;
+  $('#planWrap').innerHTML=out; planXf={x0,z0,sc};
+  document.querySelectorAll('#lvchips button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.lv===lv?'true':'false'));
+}
+let planXf=null;
+function renderSection(){
+  const W=330,H=300;
+  const yOf=d=> d<=2070? 26+d/2070*84 : 110+(d-2070)*.72;
+  const band=(d,segs,label,go)=>{ const y=yOf(d); let x=60; let o=''; segs.forEach(([w,c,g,t])=>{ o+=`<g data-go="${g}"><title>${esc(t)}</title><rect x="${x}" y="${y-5}" width="${w}" height="10" fill="${c}" stroke="#0B0D0F"/></g>`; x+=w; }); o+=`<text x="54" y="${y+3.5}" text-anchor="end" font-family="Martian Mono, monospace" font-size="9" fill="#E8E2D6">${label}</text>`; return o; };
+  let o=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Section through the facility from surface to 2320">`;
+  o+=`<rect x="0" y="0" width="${W}" height="26" fill="#1b2a3a"/><rect x="0" y="26" width="${W}" height="${H-26}" fill="#16120f"/>`;
+  o+=`<line x1="0" y1="26" x2="${W}" y2="26" stroke="#77756F" stroke-width="2"/>`;
+  o+=`<g data-go="yard"><title>Surface</title><path d="M84 26 L90 6 L96 26 M86 18 L94 18 M88 10 L92 10" stroke="#9DA3A8" stroke-width="1.6" fill="none"/><rect x="60" y="18" width="18" height="8" fill="#9aa0a4"/></g>`;
+  o+=`<text x="54" y="29" text-anchor="end" font-family="Martian Mono, monospace" font-size="9" fill="#E8E2D6">0 m</text>`;
+  o+=`<line x1="90" y1="26" x2="90" y2="${yOf(2070)}" stroke="#8a7a66" stroke-width="2"/>`;
+  o+=`<path d="M80 62 l20 -4 M80 68 l20 -4" stroke="#8a7a66" stroke-width="1.2"/><text x="104" y="66" font-family="Newsreader, serif" font-style="italic" font-size="10" fill="#9AA2A8">≈2 km of norite, compressed</text>`;
+  o+=`<g data-go="drift"><title>The walk</title><line x1="90" y1="${yOf(2070)}" x2="150" y2="${yOf(2070)}" stroke="#6b5a48" stroke-width="3"/></g>`;
+  o+=band(2070,[[0,'#000','c2070','']],'2070','c2070');
+  o+=`<g data-go="c2070"><title>2070 · cover laboratory</title><rect x="150" y="${yOf(2070)-5}" width="120" height="10" fill="#ECE5D8" stroke="#0B0D0F"/></g><g data-go="hallA"><title>Experiment Halls</title><rect x="170" y="${yOf(2070)-14}" width="36" height="10" fill="#ECE5D8" stroke="#0B0D0F"/></g>`;
+  o+=`<line x1="60" y1="${yOf(2135)}" x2="${W-10}" y2="${yOf(2135)}" stroke="#E2A445" stroke-dasharray="4 3"/><g data-go="vest"><title>The seam</title><text x="${W-12}" y="${yOf(2135)-3}" text-anchor="end" font-family="Martian Mono, monospace" font-size="8.5" fill="#E2A445">THE SEAM · clean/dirty line’s hidden twin</text></g>`;
+  o+=`<line x1="230" y1="${yOf(2070)}" x2="230" y2="${yOf(2320)}" stroke="#9CC6E8" stroke-width="1.5" stroke-dasharray="3 2"/>`;
+  o+=band(2200,[[80,'#A7B4BF','spineW','2200 West · Research'],[80,'#D8CCB4','spineC','2200 Central · shared'],[80,'#34383C','spineE','2200 East · Operations']],'2200','spineC');
+  o+=`<g data-go="rescorr"><title>Residential (placement is this guide’s assumption)</title><rect x="178" y="${yOf(2200)+6}" width="40" height="7" fill="#C49F72" stroke="#0B0D0F"/></g>`;
+  o+=band(2260,[[240,'#6C6862','plantdrift','Plant Level (depth unfixed)']],'PLANT','plantdrift');
+  o+=band(2320,[[110,'#161616','deepmain','2320 · Tier 1']],'2320','deepmain');
+  o+=`<g data-go="lobby23"><title>The cage stop Charlotte has never pressed</title><circle cx="230" cy="${yOf(2320)}" r="4" fill="#E2A445"/></g>`;
+  [[2070,'42 °C'],[2200,'45 °C'],[2260,'≈47 °C'],[2320,'48 °C']].forEach(([d,t])=>o+=`<text x="${W-6}" y="${yOf(d)+14}" text-anchor="end" font-family="Martian Mono, monospace" font-size="8" fill="#6E767D">${t}</text>`);
+  o+=`<text x="8" y="${H-8}" font-family="Martian Mono, monospace" font-size="8" fill="#6E767D">Rock warms ~25 °C per km of further depth</text>`;
+  o+=`<circle id="secMe" r="4.5" fill="#9CC6E8" stroke="#0B0D0F" stroke-width="1.5" cx="0" cy="0"/></svg>`;
+  $('#sectionWrap').innerHTML=o; secY=yOf;
+}
+let secY=null;
+function updateMapMarkers(){
+  if($('#tab-map').hidden) return;
+  const me=document.getElementById('me');
+  if(me&&planXf&&planLv===st.lv){ me.style.display=''; me.setAttribute('transform',`translate(${((st.pos.x-planXf.x0)*planXf.sc).toFixed(1)},${((st.pos.z-planXf.z0)*planXf.sc).toFixed(1)}) rotate(${(-(st.yaw+st.offYaw)*180/Math.PI).toFixed(1)})`); }
+  else if(me) me.style.display='none';
+  const sm=document.getElementById('secMe'); if(sm&&secY){ const d=depthOf(st.pos.y); const x=st.lv==='surf'||st.inCage&&st.inCage.data.shaft==='main'?90:st.pos.x<-90&&st.lv==='l2070'?90+(st.pos.x+196)/106*60:60+Math.max(0,Math.min(240,(st.pos.x+120)/264*240)); sm.setAttribute('cx',x.toFixed(1)); sm.setAttribute('cy',secY(d).toFixed(1)); }
+}
+
+/* index tab */
+function renderIndex(){
+  let h='<div><h3>Where a scene happens · Codex §11</h3><table class="qref"><tbody>';
+  QREF.forEach(([need,id,txt])=>h+=`<tr><td>${esc(need)}</td><td><button type="button" data-go="${id}">${esc(txt)}</button></td></tr>`);
+  h+='</tbody></table></div><div><h3>The Tells · what doesn’t add up</h3><ol class="tells">';
+  TELLS.forEach(([t,id])=>h+=`<li>${esc(t)}${id?`<button type="button" data-go="${id}">go</button>`:' <span class="chip interp" style="font-size:8.5px">location unfixed</span>'}</li>`);
+  h+='</ol></div>';
+  LV_ORDER.forEach(lv=>{ h+=`<div><h3>${esc(LEVELS[lv].name)}${lv!=='surf'?' · '+LEVELS[lv].depth.toLocaleString('en-GB')+' m':''}</h3><ul>`;
+    spaces.filter(s=>s.lv===lv).forEach(s=>h+=`<li><button type="button" data-go="${s.id}"><i style="background:${ZONES[s.zone].floor}"></i><b>${esc(s.name)}</b><small>${esc(s.off||'')}</small></button></li>`);
+    h+='</ul></div>'; });
+  $('#tab-index').innerHTML=h;
+}
+function renderLegend(){ $('#legend').innerHTML=['w2070','west','central','east','res','deep','plant','hard'].map(z=>`<span><i style="background:${ZONES[z].floor}"></i>${esc(ZONES[z].label)}</span>`).join(''); }
+
+/* tabs */
+document.querySelectorAll('.tabs [data-tab]').forEach(b=>b.addEventListener('click',()=>{ document.querySelectorAll('.tabs [data-tab]').forEach(x=>x.setAttribute('aria-selected',x===b?'true':'false')); ['here','light','map','index'].forEach(t=>$('#tab-'+t).hidden=t!==b.dataset.tab); if(b.dataset.tab==='map'){ renderPlan(st.lv); } if(b.dataset.tab==='light') renderLightSys(); const p=$('#panel'); if(p.classList.contains('collapsed')) toggleSheet(); }));
+function toggleSheet(){ const p=$('#panel'); p.classList.toggle('collapsed'); const c=p.classList.contains('collapsed'); $('#sheetToggle').textContent=c?'▴':'▾'; $('#sheetToggle').setAttribute('aria-expanded',c?'false':'true'); }
+$('#sheetToggle').addEventListener('click',toggleSheet);
+if(matchMedia('(max-width: 860px)').matches) toggleSheet();
+$('#lvchips').innerHTML=LV_ORDER.map(lv=>`<button type="button" data-lv="${lv}" aria-pressed="false">${esc(LEVELS[lv].short)}</button>`).join('');
+$('#lvchips').addEventListener('click',e=>{ const b=e.target.closest('[data-lv]'); if(b) renderPlan(b.dataset.lv); });
+document.addEventListener('click',e=>{ const g=e.target.closest('[data-go]'); if(g&&!e.target.closest('#route')){ Tour.playing=false; setPlayIcon(); goTo(g.dataset.go); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const g=e.target.closest&&e.target.closest('svg [data-go]'); if(g){ goTo(g.dataset.go); } } });
+
+/* caption */
+let capTimer=0;
+function showCaption(html,isHtml){ const c=$('#caption'); if(isHtml) c.innerHTML=html; else c.textContent=html; c.classList.add('on'); capTimer=5.5; }
+
+/* door signage labels */
+const labels=[];
+(function makeLabels(){
+  const box=$('#labels');
+  spaces.forEach(s=>{
+    if(s.kind==='corridor'||s.kind==='yard') return;
+    const cs=conns.filter(c=>!c.bad&&(c.a===s.id||c.b===s.id)&&c.passable);
+    if(!cs.length) return;
+    let c=cs.find(c=>{ const o=byId[c.a===s.id?c.b:c.a]; return o.kind==='corridor'; })||cs[0];
+    const host=byId[c.a===s.id?c.b:c.a]; const n=c.a===s.id?[-c.nA[0],-c.nA[1]]:c.nA; // into host
+    const x=c.center[0]+n[0]*.25, z=c.center[1]+n[1]*.25, y=host.y+Math.min(c.gh+.5,host.h-.25);
+    const el=document.createElement('button'); el.type='button'; el.className='lbl'; el.style.setProperty('--sw',ZONES[s.zone].floor); el.dataset.go=s.id; el.tabIndex=-1;
+    el.innerHTML=`<b>${esc(s.name)}</b><small>${esc(s.off||'')}</small>`; el.hidden=true; box.appendChild(el);
+    labels.push({el,host:host.id,v:new THREE.Vector3(x,y,z),lv:s.lv});
+  });
+  const extra=[['spineC',-33.5,3.3,'← West · Research','Floor turns pale blue-grey','zone'],['spineW',-38.5,3.3,'Central →','Warm bone','zone'],['spineC',33.5,3.3,'East · Operations →','Floor turns dark graphite','zone'],['spineE',38.5,3.3,'← Central','Warm bone','zone'],
+    ['drift',-186,3.4,'The walk →','1.5 km of raw drift, compressed','zone'],['issue',-72,2.5,'The line','Dirty ← → clean','note'],['svc',5.5,2.4,'Plant access','The seam is ahead','note'],['archive',-12,3.2,'The first shelf','Begins mid-sentence','note'],['lobby23',5.5,2.8,'2320','A stop Charlotte has never pressed','note']];
+  extra.forEach(([host,x,y,t,sub,cls])=>{ const s=byId[host]; const el=document.createElement('div'); el.className='lbl '+cls; el.innerHTML=`<b>${esc(t)}</b><small>${esc(sub)}</small>`; el.hidden=true; box.appendChild(el);
+    const z=host==='issue'?s.cz:host==='svc'?22.5:host==='archive'?12:host==='lobby23'?33.6:s.cz; labels.push({el,host,v:new THREE.Vector3(x,s.y+y,z),lv:s.lv,zone:true}); });
+})();
+const V=new THREE.Vector3();
+function updateLabels(curSpace){
+  const w=canvas.clientWidth,h=canvas.clientHeight;
+  for(const L of labels){
+    const ok=curSpace&&!st.inCage&&L.host===curSpace.id;
+    if(!ok){ if(!L.el.hidden) L.el.hidden=true; continue; }
+    const dist=L.v.distanceTo(st.pos); V.copy(L.v).project(cam);
+    if(dist>38||V.z>1||V.z<-1||Math.abs(V.x)>1.1||Math.abs(V.y)>1.1){ if(!L.el.hidden) L.el.hidden=true; continue; }
+    const sx=(V.x*.5+.5)*w, sy=(-V.y*.5+.5)*h; const sc=Math.max(.55,Math.min(1.05,5.5/Math.max(dist,1)));
+    L.el.hidden=false; L.el.style.transform=`translate(${sx.toFixed(0)}px,${sy.toFixed(0)}px) translate(${L.zone?'-50%':'-10%'},-100%) scale(${sc.toFixed(2)})`; L.el.style.opacity=Math.min(1,(38-dist)/10).toFixed(2); L.el.style.zIndex=String(1000-Math.round(dist));
+  }
+}
+
+/* cage panel */
+function updateCagePanel(){
+  const s=byId[st.here]; const p=$('#cagePanel');
+  if(!s||!s.cage||st.trip){ p.hidden=true; return; }
+  p.hidden=false; const main=s.cage.shaft==='main';
+  $('#cageTitle').textContent=main?'Main cage · mine shaft':'Internal cage · behind the seam';
+  const stops=main?[['collar','Surface','0 m'],['station','2070','2,070 m']]:[['lobby70','2070 · seam side','2,070 m'],['lobby22','2200','2,200 m'],['lobbyP','Plant','depth unfixed'],['lobby23','2320','escort only']];
+  $('#cageBtns').innerHTML=stops.map(([id,t,sub])=>`<button type="button" data-cage="${id}" class="${id==='lobby23'?'keyed':''}" aria-current="${id===s.id?'true':'false'}"><span>${esc(t)}</span><small>${esc(sub)}</small></button>`).join('');
+  $('#cageNote').textContent=main?'Depth changes at exactly one stage of the threshold ritual.':'The 2320 stop is pressed for you. Nobody from Tier 2 presses it themselves.';
+}
+$('#cageBtns').addEventListener('click',e=>{ const b=e.target.closest('[data-cage]'); if(!b||b.dataset.cage===st.here) return; Tour.playing=false; setPlayIcon(); goTo(b.dataset.cage); });
+
+/* tour + dock */
+const Tour={list:TOUR_KEY.slice(),i:0,playing:false,dwell:0};
+function renderRoute(){
+  const r=$('#route'); r.innerHTML=Tour.list.map((id,i)=>{ const s=byId[id]; return `<button type="button" data-i="${i}" style="background:${ZONES[s.zone].floor}" title="${esc((i+1)+'. '+s.name+' · '+LEVELS[s.lv].name)}" aria-label="${esc('Stop '+(i+1)+': '+s.name)}"></button>`; }).join('');
+  const counts={}; Tour.list.forEach(id=>{ const lv=byId[id].lv; counts[lv]=(counts[lv]||0)+1; });
+  $('#routelv').innerHTML=LV_ORDER.filter(lv=>counts[lv]).map(lv=>`<span style="flex:${counts[lv]} 1 0">${esc(LEVELS[lv].short)}</span>`).join('');
+  updateRoute();
+}
+function updateRoute(){ const bs=$('#route').children; for(let i=0;i<bs.length;i++){ bs[i].classList.toggle('cur',i===Tour.i); bs[i].classList.toggle('done',i<Tour.i);} const s=byId[Tour.list[Tour.i]]; $('#stopName').textContent=`Stop ${Tour.i+1} of ${Tour.list.length} · ${s?s.name:''}`; }
+$('#route').addEventListener('click',e=>{ const b=e.target.closest('[data-i]'); if(!b) return; Tour.i=+b.dataset.i; goTo(Tour.list[Tour.i],true); });
+function setPlayIcon(){ $('#playIco').innerHTML=Tour.playing?'<path d="M3 2h4v12H3zM9 2h4v12H9z"/>':'<path d="M4 2l10 6-10 6z"/>'; $('#bPlay').setAttribute('aria-label',Tour.playing?'Pause guided descent':'Play guided descent'); }
+function tourNext(){ if(Tour.i>=Tour.list.length-1){ Tour.playing=false; setPlayIcon(); showCaption('The bottom of the facility. Six people are cleared for this level.'); return; } Tour.i++; goTo(Tour.list[Tour.i],true); }
+$('#bPlay').addEventListener('click',()=>{ Tour.playing=!Tour.playing; setPlayIcon(); if(Tour.playing&&!st.trip){ if(st.here!==Tour.list[Tour.i]) goTo(Tour.list[Tour.i],true); else Tour.dwell=.8; } });
+$('#bNext').addEventListener('click',()=>{ tourNext(); });
+$('#bPrev').addEventListener('click',()=>{ Tour.i=Math.max(0,Tour.i-1); goTo(Tour.list[Tour.i],true); });
+$('#tourSet').addEventListener('change',e=>{ const cur=Tour.list[Tour.i]; Tour.list=(e.target.value==='all'?TOUR_ALL:TOUR_KEY).slice(); const j=Tour.list.indexOf(cur); if(j>=0) Tour.i=j; else { const k=TOUR_ALL.indexOf(cur); let best=0; Tour.list.forEach((id,i)=>{ if(TOUR_ALL.indexOf(id)<=k) best=i; }); Tour.i=best; } renderRoute(); });
+$('#speed').addEventListener('change',e=>{ st.speed=+e.target.value; });
+$('#bSound').addEventListener('click',()=>{ Sound.toggle(); const on=Sound.on; $('#bSound').textContent=on?'Sound on':'Sound off'; $('#bSound').setAttribute('aria-pressed',on?'true':'false'); if(on) showCaption('Air handling runs everywhere. Press P to let the plant cycle down.'); });
+
+/* clock controls */
+const clockIn=$('#clock');
+clockIn.addEventListener('input',()=>{ st.clock=+clockIn.value; st.runDay=false; $('#runDay').setAttribute('aria-pressed','false'); });
+$('#runDay').addEventListener('click',()=>{ st.runDay=!st.runDay; $('#runDay').setAttribute('aria-pressed',st.runDay?'true':'false'); if(st.runDay){ st.hold=false; $('#holdClock').setAttribute('aria-pressed','false'); } });
+$('#holdClock').addEventListener('click',()=>{ st.hold=!st.hold; $('#holdClock').setAttribute('aria-pressed',st.hold?'true':'false'); });
+
+/* input: look + walk */
+let drag=null;
+canvas.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY,id:e.pointerId}; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove',e=>{ if(!drag||drag.id!==e.pointerId) return; const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag.x=e.clientX; drag.y=e.clientY; st.offYaw-=dx*.0045; st.offPitch=Math.max(-1.2,Math.min(1.2,st.offPitch-dy*.0038)); });
+const endDrag=e=>{ if(drag&&drag.id===e.pointerId) drag=null; };
+canvas.addEventListener('pointerup',endDrag); canvas.addEventListener('pointercancel',endDrag);
+const KEYMAP={KeyW:'f',ArrowUp:'f',KeyS:'b',ArrowDown:'b',KeyA:'sl',KeyD:'sr',ArrowLeft:'l',ArrowRight:'r'};
+window.addEventListener('keydown',e=>{
+  if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')) return;
+  const k=KEYMAP[e.code]; if(k){ st.keys[k]=true; e.preventDefault(); return; }
+  if(e.code==='Space'&&e.target===document.body||e.code==='Space'&&e.target===canvas){ e.preventDefault(); $('#bPlay').click(); }
+  if(e.code==='BracketRight') tourNext(); if(e.code==='BracketLeft') $('#bPrev').click();
+  if(e.code==='KeyP'&&Sound.on){ Sound.plantDownT=9; showCaption('When the plant cycles down, the silence is wrong.'); }
+});
+window.addEventListener('keyup',e=>{ const k=KEYMAP[e.code]; if(k) st.keys[k]=false; });
+$('#touch').addEventListener('pointerdown',e=>{ const b=e.target.closest('[data-k]'); if(!b) return; st.keys[b.dataset.k]=true; b.setPointerCapture(e.pointerId); });
+['pointerup','pointercancel','pointerleave'].forEach(ev=>$('#touch').addEventListener(ev,e=>{ const b=e.target.closest('[data-k]'); if(b) st.keys[b.dataset.k]=false; }));
+
+function validPos(lv,x,z){
+  for(const s of spaces){ if(s.lv!==lv||s.style==='none'&&s.id!=='yard') continue;
+    if(x<s.x0-1e-3||x>s.x1+1e-3||z<s.z0-1e-3||z>s.z1+1e-3) continue;
+    const m=.28; if(x>s.x0+m&&x<s.x1-m&&z>s.z0+m&&z<s.z1-m){ if(s.hole&&x>s.hole[0]-.2&&x<s.hole[2]+.2&&z>s.hole[1]-.2&&z<s.hole[3]+.2&&!(s.cage)) return false; return true; }
+    for(const g of s.gaps){ const c=g.conn; if(!c.passable) continue; if(c.door&&c.door.open<.7) continue; const lo=c.type==='glass'?c.dlo:c.lo, hi=c.type==='glass'?c.dhi:c.hi;
+      const along=c.axis==='x'?z:x, perp=c.axis==='x'?Math.abs(x-c.edge):Math.abs(z-c.edge); if(perp<.6&&along>lo+.22&&along<hi-.22) return true; }
+  }
+  return false;
+}
+function walkStep(dt){
+  const f=(st.keys.f?1:0)-(st.keys.b?1:0), sd=(st.keys.sr?1:0)-(st.keys.sl?1:0), turn=(st.keys.l?1:0)-(st.keys.r?1:0);
+  if(!f&&!sd&&!turn) return false;
+  if(st.trip){ if(st.trip.segs[st.trip.i]&&st.trip.segs[st.trip.i].type==='cage') return false; st.trip=null; }
+  if(Tour.playing){ Tour.playing=false; setPlayIcon(); }
+  if(!st.walking){ st.walking=true; st.yaw+=st.offYaw; st.tYaw=st.yaw; st.offYaw=0; }
+  st.tYaw+=turn*1.8*dt; st.yaw=st.tYaw;
+  const sp=3.6*Math.max(1,st.speed*.75)*dt; const fx=-Math.sin(st.yaw), fz=-Math.cos(st.yaw), rx=Math.cos(st.yaw), rz=-Math.sin(st.yaw);
+  const nx=st.pos.x+(fx*f+rx*sd)*sp, nz=st.pos.z+(fz*f+rz*sd)*sp;
+  if(validPos(st.lv,nx,nz)){ st.pos.x=nx; st.pos.z=nz; } else if(validPos(st.lv,nx,st.pos.z)) st.pos.x=nx; else if(validPos(st.lv,st.pos.x,nz)) st.pos.z=nz;
+  st.pos.y=LEVELS[st.lv].y+EYE;
+  return true;
+}
+
+/* =========================================================
+   MAIN LOOP
+   ========================================================= */
+function resize(){ const w=app.clientWidth,h=app.clientHeight; renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); }
+window.addEventListener('resize',resize); resize();
+renderIndex(); renderSection(); renderLegend(); renderRoute(); renderDayBar(); renderHere(byId.yard); renderPlan('l2200');
+applyClockMaterials(st.clock/60);
+LIGHT.cur=profile(byId.yard,st.clock/60);
+
+let lastT=performance.now(), lastSpaceId=null, lastZone=null, hintT=9, frame=0;
+function tick(now){
+  const dt=Math.min(.05,(now-lastT)/1000); lastT=now; frame++;
+  // clock
+  if(!st.hold){ st.clock=(st.clock+dt*(st.runDay?24:1)+1440)%1440; }
+  if(frame%3===0){ clockIn.value=Math.floor(st.clock); $('#clockOut').textContent=fmtClock(st.clock); $('#daybarMark').style.left=(st.clock/1440*100).toFixed(2)+'%'; applyClockMaterials(st.clock/60); const c=circ(st.clock/60); $('#kSw').style.background='#'+c.col.getHexString(); }
+  // movement
+  const walked=walkStep(dt);
+  if(!walked) stepTrip(dt);
+  if(!st.trip&&!walked&&Tour.playing&&Tour.dwell>0){ Tour.dwell-=dt; if(Tour.dwell<=0) tourNext(); }
+  // current level (not while in cage)
+  if(!st.inCage){ let best='surf',bd=1e9; LV_ORDER.forEach(lv=>{ const d=Math.abs(st.pos.y-EYE-LEVELS[lv].y); if(d<bd){bd=d;best=lv;} }); st.lv=best; }
+  const cur=updatePlate();
+  if(cur&&cur.id!==lastSpaceId){
+    const prev=lastSpaceId&&byId[lastSpaceId]; lastSpaceId=cur.id;
+    if(prev&&prev.id.startsWith('spine')&&cur.id.startsWith('spine')) showCaption(`Floor: <i class="sw" style="background:${ZONES[prev.zone].floor}"></i>${esc(ZONES[prev.zone].label.toLowerCase())} → <i class="sw" style="background:${ZONES[cur.zone].floor}"></i>${esc(ZONES[cur.zone].label.toLowerCase())}`,true);
+    else if(cur.caption) showCaption(cur.caption);
+    if(st.walking){ st.here=cur.id; renderHere(cur); updateCagePanel(); }
+    if(cur.cage){ const car=cur.cage.shaft==='main'?carMain:carInner; if(car.level!==cur.lv&&!st.inCage){ car.g.position.y=cur.y; car.level=cur.lv; car.g.visible=true; car.departing=0; if(car===carInner) escort.visible=cur.lv==='l2320'; } }
+    if(prev&&prev.id==='station'&&cur.id!=='station'&&carMain.level==='l2070'){ carMain.departing=1; }
+  }
+  // the main cage carries its crew on down into the mine
+  if(carMain.departing){ carMain.g.position.y-=dt*3.2; if(carMain.g.position.y<LEVELS.l2070.y-30){ carMain.departing=0; carMain.g.visible=false; carMain.level=null; } }
+  if(st.trip){ const sg=st.trip.segs[st.trip.i]; if(sg&&sg.type==='cage'&&sg.car===carMain){ carMain.g.visible=true; carMain.departing=0; } }
+  // lighting blend
+  const s=st.inCage?(st.inCage.data.shaft==='main'?null:byId.lobby70):cur;
+  const target=profile(s,st.clock/60); LIGHT.cur=lerpProfile(LIGHT.cur,target,1-Math.exp(-dt*3));
+  const P=LIGHT.cur;
+  hemi.color.copy(P.hemiC); hemi.groundColor.copy(P.hemiG); hemi.intensity=P.hemiI;
+  camLight.intensity=P.camI; camLight.color.copy(P.camC); capLamp.intensity=P.cap; sun.intensity=P.sun;
+  scene.fog.color.copy(P.fog); scene.fog.near=P.near; scene.fog.far=P.far; scene.background.copy(P.fog);
+  renderer.toneMappingExposure=P.exp;
+  if(P.bulbs>.01){ const B=bulbs[st.lv]; if(B.length){ const sorted=B.slice().sort((a,b)=>Math.hypot(a[0]-st.pos.x,a[2]-st.pos.z)-Math.hypot(b[0]-st.pos.x,b[2]-st.pos.z)); bulbPool.forEach((l,i)=>{ const b=sorted[i]; if(b){ l.position.set(b[0],b[1]-.2,b[2]); l.intensity=P.bulbs; } else l.intensity=0; }); } else bulbPool.forEach(l=>l.intensity=0); } else bulbPool.forEach(l=>l.intensity=0);
+  // beach glare, eyelids
+  const inBeach=cur&&cur.light==='beach'&&!st.trip;
+  st.beachT=inBeach?st.beachT+dt:0;
+  $('#glare').style.opacity=cur&&cur.light==='beach'?.55:0;
+  $('#lids').style.opacity=st.beachT>2.6&&!drag?.88:0;
+  if(st.beachT>2.6&&st.beachT-dt<=2.6) showCaption('Bright enough that you close your eyes. Drag to look, and they open.');
+  // blasting in the mine
+  const L=s?s.light:'shaft';
+  if(L==='rock'||!s){ st.blastT-=dt; if(st.blastT<=0){ st.blastT=14+Math.random()*14; st.shake=.8; Sound.blast(); } }
+  st.shake=Math.max(0,st.shake-dt);
+  Sound.update(dt,L);
+  // camera
+  const k=1-Math.exp(-dt*(st.trip?4.5:3.2));
+  st.yaw+=angDiff(st.yaw,st.tYaw)*k; st.pitch+=(st.tPitch-st.pitch)*k;
+  if(st.trip&&!drag){ st.offYaw*=Math.exp(-dt*.9); st.offPitch*=Math.exp(-dt*.9); }
+  const sh=st.shake>0?st.shake*.035:0;
+  cam.position.set(st.pos.x+(Math.random()-.5)*sh,st.pos.y+(Math.random()-.5)*sh+(st.trip&&!st.inCage?Math.sin(now*.011)*.012:0),st.pos.z+(Math.random()-.5)*sh);
+  cam.rotation.set(Math.max(-1.3,Math.min(1.3,st.pitch+st.offPitch)),st.yaw+st.offYaw,0);
+  // level visibility
+  const camY=st.pos.y-EYE;
+  LV_ORDER.forEach(lv=>{ G[lv].visible=Math.abs(LEVELS[lv].y-camY)<(st.inCage?80:20)||lv===st.lv; });
+  Gshaft.visible=!!st.inCage||(cur&&!!cur.cage);
+  // animation: doors, walkers, spinners, steam, leds
+  for(const d of doors){ let t=0; const dx=d.x-st.pos.x, dz=d.z-st.pos.z; const nearby=dx*dx+dz*dz<30&&Math.abs(st.pos.y-EYE-d.y)<1.5;
+    if(d.override!=null) t=d.override; else if(nearby){ const c=d.conn; if(c.type==='seam'||c.inner){ const pg=byId.vest.gaps.find(g=>g.conn!==c&&g.conn.door); const pd=pg&&pg.conn.door; const myD=dx*dx+dz*dz, pD=pd?(pd.x-st.pos.x)**2+(pd.z-st.pos.z)**2:1e9; t=(myD<=pD&&(!pd||pd.open<.05))?1:0; } else t=1; }
+    d.target=t; const sp=d.speed*dt; d.open+=Math.max(-sp,Math.min(sp,d.target-d.open)); const e=d.open*d.open*(3-2*d.open); d.pivots.forEach(p=>p.g.rotation.y=p.ang*e); }
+  for(const w of walkers){ if(!G[w.lv].visible) continue; const L2=Math.hypot(w.b[0]-w.a[0],w.b[1]-w.a[1]); w.t+=dt*w.speed/L2; const ph=w.t%2, fw=ph<1; const u=fw?ph:2-ph; const sm=u*u*(3-2*u)*.0+u;
+    w.p.position.x=w.a[0]+(w.b[0]-w.a[0])*sm; w.p.position.z=w.a[1]+(w.b[1]-w.a[1])*sm; const dx=(w.b[0]-w.a[0])*(fw?1:-1), dz=(w.b[1]-w.a[1])*(fw?1:-1); w.p.rotation.y=Math.atan2(dx,dz);
+    const sw=Math.sin(now*.0068*w.speed+w.t*9)*.45; const U=w.p.userData; U.legs[0].rotation.x=sw; U.legs[1].rotation.x=-sw; U.arms[0].rotation.x=-sw*.7; U.arms[1].rotation.x=sw*.7; }
+  spinners.forEach(f=>{ if(f.slow) f.slow.rotation.z+=dt*.6; else f.rotation.y+=dt*9; });
+  steamSystems.forEach(S=>{ if(!G[S.s.lv].visible) return; for(let i=0;i<S.n;i++){ S.pos[i*3+1]+=dt*(.25+(i%7)*.04); if(S.pos[i*3+1]>S.s.y+2.9) S.pos[i*3+1]=S.s.y+.3; } S.pts.geometry.attributes.position.needsUpdate=true; });
+  TX.leds.offset.y=Math.floor(now/450)%8*.03;
+  // cage gates: closed while riding
+  [carMain,carInner].forEach(c=>{ const riding=st.inCage&&st.inCage.car===c; const tgt=riding?0:c.h-.3; c.gate.position.y+=(tgt+ (c.h-.2)/2 - c.gate.position.y)*Math.min(1,dt*6); if(c.gate2) c.gate2.position.y=c.gate.position.y; });
+  // UI bits
+  updateLabels(cur); updateMapMarkers();
+  if(capTimer>0){ capTimer-=dt; if(capTimer<=0) $('#caption').classList.remove('on'); }
+  if(hintT>0){ hintT-=dt; if(hintT<=0) $('#hint').style.opacity=0; }
+  renderer.render(scene,cam);
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+// begin the descent on its own unless the viewer prefers reduced motion
+if(!RM){ setTimeout(()=>{ if(!Tour.playing&&st.here==='yard'&&!st.trip&&!st.walking){ Tour.playing=true; setPlayIcon(); Tour.dwell=5; } },1800); }
+setPlayIcon();
+})();
+</script>
